@@ -1,25 +1,25 @@
 import streamlit as st
 import numpy as np
 import networkx as nx
-import matplotlib.pyplot as plt
 import pandas as pd
+import plotly.graph_objects as go
 
-# 1. Page Config (Wide Layout for a pro dashboard feel)
+# Page Config
 st.set_page_config(page_title="Traffic Optimizer", page_icon="🚦", layout="wide")
 
-# 2. Header
+# Header
 st.title("🚦 Urban Traffic Flow Optimizer")
 st.markdown("A professional linear algebra solver for urban traffic conservation, bottleneck detection, and network visualization.")
 st.divider()
 
-# 3. Sidebar
+# Sidebar
 with st.sidebar:
     st.header("⚙️ Simulation Parameters")
     node_choice = st.selectbox("Network Scale", ["4-Node Grid", "6-Node Grid"])
     st.markdown("---")
-    st.markdown("**About:** Built with Python, NumPy, Pandas, and Streamlit.")
+    st.markdown("**About:** Built with Python, NumPy, Pandas, Plotly, and Streamlit.")
 
-# 4. Load Matrix Data based on user choice
+# Load Matrix Data
 if node_choice == "4-Node Grid":
     num_nodes = 4
     capacity_matrix = np.array([
@@ -55,7 +55,7 @@ else:
     ])
     default_b = "[40; -10; -20; -10; 10; -10]"
 
-# 5. Main Dashboard Layout (Columns)
+# Main Dashboard Layout
 col1, col2 = st.columns([1, 1.5], gap="large")
 
 with col1:
@@ -67,14 +67,14 @@ with col1:
         cleaned_b = user_b_input.strip().replace('[', '').replace(']', '')
         b = np.array([float(val.strip()) for val in cleaned_b.split(';')])
         
-        # Linear Algebra Solver (Ax = b)
-        traffic_flow = np.linalg.solve(A, b)
+        # Linear Algebra Solver (Ax = b) - Converted to Absolute Integers
+        raw_traffic_flow = np.linalg.solve(A, b)
+        traffic_flow = np.abs(np.round(raw_traffic_flow)).astype(int)
         
         st.subheader("📊 Computed Volumes ($x$)")
-        # Display as a neat metric grid
         metric_cols = st.columns(3)
         for idx, vol in enumerate(traffic_flow):
-            metric_cols[idx % 3].metric(label=f"Intersection {idx+1}", value=f"{vol:.1f}")
+            metric_cols[idx % 3].metric(label=f"Intersection {idx+1}", value=f"{vol}")
 
     except Exception as e:
         st.error(f"Error parsing input or solving system: {e}")
@@ -83,8 +83,7 @@ with col1:
 with col2:
     st.subheader("🗺️ Network Analysis")
     
-    # Use Tabs to organize the output cleanly
-    tab1, tab2 = st.tabs(["Bottleneck & Delay Table", "Visual Topology"])
+    tab1, tab2 = st.tabs(["Bottleneck & Delay Table", "Interactive Topology"])
     
     with tab1:
         total_delay = 0
@@ -101,7 +100,7 @@ with col2:
                 results.append({
                     "Node": f"Int {i+1}",
                     "Status": status,
-                    "Vol": round(traffic_flow[i], 2),
+                    "Vol": traffic_flow[i],
                     "Max Cap": max_out,
                     "Delay (min)": round(delay, 2)
                 })
@@ -109,24 +108,48 @@ with col2:
                 results.append({
                     "Node": f"Int {i+1}",
                     "Status": "🛑 Terminal",
-                    "Vol": round(traffic_flow[i], 2),
+                    "Vol": traffic_flow[i],
                     "Max Cap": 0,
                     "Delay (min)": 0.0
                 })
         
-        # Render a clean, formatted table
         st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
         st.metric(label="Total Network Delay Cost", value=f"{total_delay:.2f} mins")
 
     with tab2:
-        # Render the graph with a transparent background so it looks good on dark mode
-        fig, ax = plt.subplots(figsize=(6, 4))
-        fig.patch.set_facecolor('none') 
-        ax.set_facecolor('none')
+        # Build Interactive Plotly Graph
         G = nx.from_numpy_array(capacity_matrix, create_using=nx.DiGraph)
         pos = nx.spring_layout(G, seed=42)
         
-        # Upgraded node aesthetics
-        nx.draw(G, pos, ax=ax, with_labels=True, node_color='#ff4b4b', node_size=800, 
-                edge_color='#888888', width=1.5, arrows=True, font_color='white', font_weight='bold')
-        st.pyplot(fig)
+        fig = go.Figure()
+        
+        # Add edges
+        for edge in G.edges():
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            fig.add_trace(go.Scatter(x=[x0, x1, None], y=[y0, y1, None],
+                                     mode='lines', line=dict(width=2, color='#888'), hoverinfo='none'))
+            
+        # Add nodes
+        node_x = [pos[node][0] for node in G.nodes()]
+        node_y = [pos[node][1] for node in G.nodes()]
+        
+        fig.add_trace(go.Scatter(
+            x=node_x, y=node_y,
+            mode='markers+text',
+            text=[f"Int {i+1}" for i in range(num_nodes)],
+            textposition="top center",
+            textfont=dict(color='white', size=14, family="Arial Black"),
+            marker=dict(size=45, color='#00ff99', line=dict(width=2, color='white')),
+            hoverinfo='text'
+        ))
+        
+        fig.update_layout(
+            showlegend=False, hovermode='closest',
+            margin=dict(b=0,l=0,r=0,t=0),
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)'
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
