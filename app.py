@@ -119,7 +119,22 @@ with col2:
     with tab2:
         # Build Interactive Plotly Graph
         G = nx.from_numpy_array(capacity_matrix, create_using=nx.DiGraph)
-        pos = nx.spring_layout(G, seed=42)
+        
+        # --- NEW STRICT GEOMETRIC LAYOUT LOGIC ---
+        if num_nodes == 4:
+            # Perfect Rectangle
+            pos = {
+                0: (0, 1),   # Top-Left
+                1: (1, 1),   # Top-Right
+                2: (1, 0),   # Bottom-Right
+                3: (0, 0)    # Bottom-Left
+            }
+        else:
+            # Perfect Hexagon using Trigonometry
+            pos = {}
+            for i in range(6):
+                angle = np.pi / 2 - i * (np.pi / 3) 
+                pos[i] = (np.cos(angle), np.sin(angle))
         
         fig = go.Figure()
         
@@ -128,7 +143,7 @@ with col2:
             x0, y0 = pos[edge[0]]
             x1, y1 = pos[edge[1]]
             fig.add_trace(go.Scatter(x=[x0, x1, None], y=[y0, y1, None],
-                                     mode='lines', line=dict(width=2, color='#888'), hoverinfo='none'))
+                                     mode='lines', line=dict(width=3, color='#888'), hoverinfo='none'))
             
         # Add nodes
         node_x = [pos[node][0] for node in G.nodes()]
@@ -144,10 +159,11 @@ with col2:
             hoverinfo='text'
         ))
         
+        # Lock the axis ratio so the hexagon/rectangle isn't warped by the screen size
         fig.update_layout(
             showlegend=False, hovermode='closest',
-            margin=dict(b=0,l=0,r=0,t=0),
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+            margin=dict(b=20, l=20, r=20, t=20),
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, scaleanchor="y", scaleratio=1),
             yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)'
         )
