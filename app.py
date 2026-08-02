@@ -24,7 +24,6 @@ with st.sidebar:
     num_nodes = 4 if node_choice == "4-Node Grid" else 6
     b_inputs = []
     for i in range(num_nodes):
-        # Default values matching your initial setup
         default_val = [40, -10, -20, -10, 10, -10][i] if num_nodes == 6 else [40, -10, -20, -10][i]
         val = st.slider(f"Intersection {i+1}", min_value=-100, max_value=100, value=default_val, step=5)
         b_inputs.append(val)
@@ -100,7 +99,7 @@ with col2:
         cap = capacity_matrix[u][v]
         vol = traffic_flow[u]
         utilization = vol / cap if cap > 0 else 0
-        delay = max(1, utilization * 10) # Base delay of 1 minute + congestion
+        delay = max(1, utilization * 10) 
         G[u][v]['weight'] = delay
 
     # Calculate Shortest Path
@@ -139,27 +138,36 @@ with col2:
             else:
                 edge_color = '#00ff99' # Green (Clear)
                 
-            # Override color if part of the shortest path
             is_path = (u, v) in shortest_path_edges
             if is_path:
-                edge_color = '#00d4ff' # Neon Blue for Active Route
+                edge_color = '#00d4ff' # Neon Blue
                 
             line_width = 4 if is_path else 2
             
-            # Draw Arrows
+            # Draw Arrows with Standoffs (prevents clipping into nodes)
             fig.add_annotation(
                 x=x1, y=y1, ax=x0, ay=y0,
                 xref='x', yref='y', axref='x', ayref='y',
-                showarrow=True, arrowhead=2, arrowsize=1.5, arrowwidth=line_width, arrowcolor=edge_color
+                showarrow=True, arrowhead=2, arrowsize=1.5, arrowwidth=line_width, arrowcolor=edge_color,
+                standoff=28, startstandoff=28
             )
             
-            # Draw Edge Volume Labels
-            mid_x, mid_y = (x0 + x1) / 2, (y0 + y1) / 2
-            fig.add_trace(go.Scatter(
-                x=[mid_x], y=[mid_y], mode='text',
-                text=[f"{vol}/{cap}"], textfont=dict(color=edge_color, size=12, family="Arial Black"),
-                hoverinfo='none'
-            ))
+            # Offset labels 35% down the line to prevent center clustering
+            label_x = x0 + 0.35 * (x1 - x0)
+            label_y = y0 + 0.35 * (y1 - y0)
+            
+            # Draw Edge Volume Labels with Background Boxes
+            fig.add_annotation(
+                x=label_x, y=label_y,
+                text=f"{vol}/{cap}",
+                showarrow=False,
+                font=dict(color='#1f2937', size=11, family="Arial Black"),
+                bgcolor=edge_color,
+                bordercolor='#1f2937',
+                borderwidth=1,
+                borderpad=2,
+                bordercolor='white'
+            )
             
         # Add Nodes
         node_x = [pos[node][0] for node in G.nodes()]
@@ -170,7 +178,7 @@ with col2:
             text=[f"Int {i+1}" for i in range(num_nodes)],
             textposition="top center",
             textfont=dict(color='white', size=15, family="Arial Black"),
-            marker=dict(size=50, color='#1f2937', line=dict(width=3, color='white')),
+            marker=dict(size=45, color='#1f2937', line=dict(width=3, color='white')),
             hoverinfo='none'
         ))
         
