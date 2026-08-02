@@ -1,7 +1,7 @@
-% Urban Traffic Flow & Route Optimization Solver (6-Node Expanded Grid)
+% Urban Traffic Flow & Route Optimization Solver (6-Node Expanded Grid with Delay Cost Analysis)
 clear; clc; close all;
 
-disp('Initializing Scaled Traffic Network Simulation...');
+disp('Initializing Scaled Traffic Network Simulation with Cost Analysis...');
 
 % Define number of nodes (intersections) - Expanded to 6
 numNodes = 6;
@@ -46,21 +46,34 @@ trafficFlow = A \ b;
 disp('Computed Traffic Volumes (x):');
 disp(trafficFlow);
 
-%% Bottleneck Detector
-disp('--- Traffic Bottleneck Analysis ---');
+%% Bottleneck Detector & Cost/Delay Optimization
+disp('--- Traffic Bottleneck & Delay Cost Analysis ---');
+totalNetworkDelay = 0;
+
 for i = 1:numNodes
     maxOutCapacity = sum(capacityMatrix(i, :));
-    if maxOutCapacity > 0 && trafficFlow(i) > maxOutCapacity
-        fprintf('WARNING: Intersection %d is experiencing congestion! Volume: %.2f, Max Capacity: %.2f\n', i, trafficFlow(i), maxOutCapacity);
+    if maxOutCapacity > 0
+        % Calculate a congestion penalty/delay cost factor based on volume-to-capacity ratio
+        utilizationRatio = max(0, trafficFlow(i)) / maxOutCapacity;
+        delayCost = utilizationRatio * 10; % Arbitrary delay metric in minutes
+        totalNetworkDelay = totalNetworkDelay + delayCost;
+
+        if trafficFlow(i) > maxOutCapacity
+            fprintf('WARNING: Intersection %d is CONGESTED! Volume: %.2f, Capacity: %.2f, Est. Delay: %.2f mins\n', i, trafficFlow(i), maxOutCapacity, delayCost);
+        else
+            fprintf('Intersection %d is normal. Volume: %.2f, Capacity: %.2f, Est. Delay: %.2f mins\n', i, trafficFlow(i), maxOutCapacity, delayCost);
+        end
     else
-        fprintf('Intersection %d is operating within safe capacity limits.\n', i);
+        fprintf('Intersection %d has no outgoing capacity (Terminal node).\n', i);
     end
 end
+
+fprintf('\nTotal Estimated Network Delay Cost: %.2f minutes\n', totalNetworkDelay);
 
 %% Visual Traffic Plotting
 figure;
 netGraph = digraph(capacityMatrix);
 p = plot(netGraph, 'Layout', 'layered', 'NodeLabel', {'Intersection 1', 'Intersection 2', 'Intersection 3', 'Intersection 4', 'Intersection 5', 'Intersection 6'});
 highlight(p, 'Edges', 1:numedges(netGraph), 'EdgeColor', 'b', 'LineWidth', 1.5);
-title('Expanded Urban Traffic Flow Network Graph');
+title('Expanded Urban Traffic Flow Network Graph with Delay Analysis');
 xlabel('Simulation Topology');
