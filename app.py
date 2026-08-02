@@ -156,17 +156,16 @@ with col2:
             label_x = x0 + 0.35 * (x1 - x0)
             label_y = y0 + 0.35 * (y1 - y0)
             
-            # Draw Edge Volume Labels with Background Boxes
+           # Draw Edge Volume Labels with Background Boxes
             fig.add_annotation(
                 x=label_x, y=label_y,
                 text=f"{vol}/{cap}",
                 showarrow=False,
                 font=dict(color='#1f2937', size=11, family="Arial Black"),
                 bgcolor=edge_color,
-                bordercolor='#1f2937',
+                bordercolor='white',
                 borderwidth=1,
-                borderpad=2,
-                bordercolor='white'
+                borderpad=2
             )
             
         # Add Nodes
