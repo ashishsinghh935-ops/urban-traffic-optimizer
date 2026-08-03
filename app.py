@@ -4,10 +4,10 @@ import networkx as nx
 import pandas as pd
 import plotly.graph_objects as go
 
-# --- Page Config ---
+# --- Page Configuration ---
 st.set_page_config(page_title="Traffic Optimizer", page_icon="🚦", layout="wide")
 
-# --- Header ---
+# --- App Header ---
 st.title("🚦 Urban Traffic Flow Optimizer")
 st.markdown("A real-time linear algebra solver for urban traffic conservation, pathfinding, and network visualization.")
 st.divider()
@@ -20,7 +20,7 @@ with st.sidebar:
     st.subheader("📥 External Traffic Inputs ($b$)")
     st.markdown("Adjust the incoming/outgoing flow for each intersection:")
     
-    # Dynamically generate sliders based on network size
+    # Dynamically generate interactive sliders for the net flow vector b based on network scale
     num_nodes = 4 if node_choice == "4-Node Grid" else 6
     b_inputs = []
     for i in range(num_nodes):
@@ -33,7 +33,8 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("**Core Tech:** Python, NumPy, Pandas, Plotly, NetworkX")
 
-# --- Load Matrix Data ---
+# --- Mathematical Model Initialization ---
+# Define the road capacity matrices and system matrices (Ax = b) based on David C. Lay's flow conservation principles
 if num_nodes == 4:
     capacity_matrix = np.array([
         [0, 50, 30, 0],
@@ -65,7 +66,8 @@ else:
         [0, 0, 0, 0, -1, 1]
     ])
 
-# --- Linear Algebra Solver (Ax = b) ---
+# --- Linear Algebra Solver ---
+# Solve the linear system Ax = b for traffic volume vector x
 try:
     raw_traffic_flow = np.linalg.solve(A, b)
     traffic_flow = np.abs(np.round(raw_traffic_flow)).astype(int)
@@ -91,10 +93,10 @@ with col2:
     st.subheader("🗺️ Network Analysis")
     tab1, tab2 = st.tabs(["Interactive Topology Heatmap", "Bottleneck & Delay Data"])
     
-    # Build Directed Graph
+    # Construct a directed graph representation of the traffic network
     G = nx.from_numpy_array(capacity_matrix, create_using=nx.DiGraph)
     
-    # Assign Delay Costs to Edges for Pathfinding
+    # Assign dynamic edge weights (delay costs) based on traffic volume-to-capacity utilization
     for u, v in G.edges():
         cap = capacity_matrix[u][v]
         vol = traffic_flow[u]
@@ -102,7 +104,7 @@ with col2:
         delay = max(1, utilization * 10) 
         G[u][v]['weight'] = delay
 
-    # Calculate Shortest Path
+    # Compute shortest path using Dijkstra's algorithm to circumvent congestion
     shortest_path_edges = []
     if start_node != end_node:
         try:
@@ -113,15 +115,15 @@ with col2:
             st.warning("No available route between these intersections.")
 
     with tab1:
-        # Strict Geometric Layout
+        # Define strict geometric node layouts for visualization
         if num_nodes == 4:
-            pos = {0: (0, 1), 1: (1, 1), 2: (1, 0), 3: (0, 0)} # Rectangle
+            pos = {0: (0, 1), 1: (1, 1), 2: (1, 0), 3: (0, 0)} # Rectangle layout
         else:
-            pos = {i: (np.cos(np.pi/2 - i*np.pi/3), np.sin(np.pi/2 - i*np.pi/3)) for i in range(6)} # Hexagon
+            pos = {i: (np.cos(np.pi/2 - i*np.pi/3), np.sin(np.pi/2 - i*np.pi/3)) for i in range(6)} # Hexagonal layout
         
         fig = go.Figure()
         
-        # Add Directed Edges with Heatmap Colors
+        # Render directed edges with color-coded congestion heatmaps
         for u, v in G.edges():
             x0, y0 = pos[u]
             x1, y1 = pos[v]
@@ -130,21 +132,21 @@ with col2:
             cap = capacity_matrix[u][v]
             util = vol / cap if cap > 0 else 0
             
-            # Heatmap Logic
+            # Heatmap color logic: Red for bottlenecks, Orange for heavy, Green for clear
             if util > 1.0:
-                edge_color = '#ff4b4b' # Red (Congested)
+                edge_color = '#ff4b4b' 
             elif util > 0.7:
-                edge_color = '#ffa500' # Orange (Heavy)
+                edge_color = '#ffa500' 
             else:
-                edge_color = '#00ff99' # Green (Clear)
+                edge_color = '#00ff99' 
                 
             is_path = (u, v) in shortest_path_edges
             if is_path:
-                edge_color = '#00d4ff' # Neon Blue
+                edge_color = '#00d4ff' # Highlight active path in neon blue
                 
             line_width = 4 if is_path else 2
             
-            # Draw Arrows with Standoffs (prevents clipping into nodes)
+            # Draw directed edge arrows with standoffs to prevent node overlapping
             fig.add_annotation(
                 x=x1, y=y1, ax=x0, ay=y0,
                 xref='x', yref='y', axref='x', ayref='y',
@@ -152,11 +154,11 @@ with col2:
                 standoff=28, startstandoff=28
             )
             
-            # Offset labels 35% down the line to prevent center clustering
+            # Offset labels along the edge vector to prevent clustering
             label_x = x0 + 0.35 * (x1 - x0)
             label_y = y0 + 0.35 * (y1 - y0)
             
-           # Draw Edge Volume Labels with Background Boxes
+            # Render edge volume ratio labels
             fig.add_annotation(
                 x=label_x, y=label_y,
                 text=f"{vol}/{cap}",
@@ -168,7 +170,7 @@ with col2:
                 borderpad=2
             )
             
-        # Add Nodes
+        # Render network intersection nodes
         node_x = [pos[node][0] for node in G.nodes()]
         node_y = [pos[node][1] for node in G.nodes()]
         
@@ -192,6 +194,7 @@ with col2:
         st.plotly_chart(fig, use_container_width=True)
 
     with tab2:
+        # Calculate bottleneck delays and compile statistical data frame
         total_delay = 0
         results = []
         for i in range(num_nodes):
