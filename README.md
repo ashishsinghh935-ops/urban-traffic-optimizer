@@ -1,3 +1,8 @@
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-App-red?style=flat-square&logo=streamlit&logoColor=white)
+![MATLAB](https://img.shields.io/badge/MATLAB-Simulation-orange?style=flat-square&logo=mathworks&logoColor=white)
+![GitHub](https://img.shields.io/badge/GitHub-Repository-black?style=flat-square&logo=github&logoColor=white)
+
 # 🚦 Urban Traffic Flow & Route Optimization Solver
 
 A dual-engine mathematical modeling project designed to optimize urban traffic networks, simulate intersection flow conservation, and detect bottlenecks using linear algebra ($Ax = b$). 
