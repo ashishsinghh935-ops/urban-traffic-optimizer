@@ -4,126 +4,155 @@ import networkx as nx
 import pandas as pd
 import plotly.graph_objects as go
 
-# --- Page Configuration ---
+# ==========================================
+# 🚦 PAGE CONFIGURATION & HEADER
+# ==========================================
 st.set_page_config(page_title="Traffic Optimizer", page_icon="🚦", layout="wide")
 
-# --- App Header ---
-st.title("🚦 Urban Traffic Flow Optimizer")
+st.title("🚦 Urban Traffic Flow & Route Optimizer")
 st.markdown("A real-time linear algebra solver for urban traffic conservation, pathfinding, and network visualization.")
+
+# Academic Mathematical Context
+with st.expander("📚 Mathematical Foundation: Linear Algebra & Flow Conservation"):
+    st.markdown("""
+    **Core Principle:** This model utilizes network flow equations to ensure vehicle conservation at every intersection.
+    * **System Equation:** $Ax = b$
+    * **Matrix $A$:** The incidence/system matrix representing road connections. Inflow is positive ($+1$), outflow is negative ($-1$).
+    * **Vector $x$:** The unknown routing volumes for each road block.
+    * **Vector $b$:** The external net traffic flow entering or leaving the grid system.
+    
+    *By solving this linear system, we compute the exact internal traffic distribution required to prevent gridlock.*
+    """)
 st.divider()
 
-# --- Sidebar Controls ---
+# ==========================================
+# ⚙️ OPTIMIZED DATA CACHING (Performance Upgrade)
+# ==========================================
+@st.cache_data
+def load_matrices(num_nodes):
+    """Loads and caches the static capacity and system matrices to prevent unnecessary re-computations."""
+    if num_nodes == 4:
+        cap_mat = np.array([
+            [0, 50, 30, 0],
+            [0, 0, 15, 40],
+            [0, 10, 0, 25],
+            [0, 0, 0, 0]
+        ])
+        sys_mat = np.array([
+            [1, 1, 0, 0],
+            [-1, 1, 1, 0],
+            [0, -1, 1, 1],
+            [0, 0, -1, 1]
+        ])
+    else:
+        cap_mat = np.array([
+            [0, 50, 30, 0, 0, 0],
+            [0, 0, 15, 40, 20, 0],
+            [0, 10, 0, 25, 0, 30],
+            [0, 0, 0, 0, 15, 10],
+            [0, 0, 0, 0, 0, 25],
+            [0, 0, 0, 0, 0, 0]
+        ])
+        sys_mat = np.array([
+            [1, 1, 0, 0, 0, 0],
+            [-1, 1, 1, 0, 0, 0],
+            [0, -1, 1, 1, 0, 0],
+            [0, 0, -1, 1, 1, 0],
+            [0, 0, 0, -1, 1, 1],
+            [0, 0, 0, 0, -1, 1]
+        ])
+    return cap_mat, sys_mat
+
+# ==========================================
+# 🎛️ UI: SIDEBAR CONTROLS
+# ==========================================
 with st.sidebar:
     st.header("⚙️ Simulation Parameters")
     node_choice = st.selectbox("Network Scale", ["4-Node Grid", "6-Node Grid"])
+    num_nodes = 4 if node_choice == "4-Node Grid" else 6
+    
+    # Load cached matrices
+    capacity_matrix, A = load_matrices(num_nodes)
     
     st.subheader("📥 External Traffic Inputs ($b$)")
-    st.markdown("Adjust the incoming/outgoing flow for each intersection:")
+    st.markdown("Adjust net traffic flow vector:")
     
-    # Dynamically generate interactive sliders for the net flow vector b based on network scale
-    num_nodes = 4 if node_choice == "4-Node Grid" else 6
     b_inputs = []
+    default_vals = [40, -10, -20, -10, 10, -10] if num_nodes == 6 else [40, -10, -20, -10]
     for i in range(num_nodes):
-        default_val = [40, -10, -20, -10, 10, -10][i] if num_nodes == 6 else [40, -10, -20, -10][i]
-        val = st.slider(f"Intersection {i+1}", min_value=-100, max_value=100, value=default_val, step=5)
+        val = st.slider(f"Intersection {i+1}", min_value=-100, max_value=100, value=default_vals[i], step=5)
         b_inputs.append(val)
         
     b = np.array(b_inputs)
-    
     st.markdown("---")
-    st.markdown("**Core Tech:** Python, NumPy, Pandas, Plotly, NetworkX")
+    st.markdown("**Tech Stack:** Python 3, NumPy, Pandas, Plotly, NetworkX")
 
-# --- Mathematical Model Initialization ---
-# Define the road capacity matrices and system matrices (Ax = b) based on David C. Lay's flow conservation principles
-if num_nodes == 4:
-    capacity_matrix = np.array([
-        [0, 50, 30, 0],
-        [0, 0, 15, 40],
-        [0, 10, 0, 25],
-        [0, 0, 0, 0]
-    ])
-    A = np.array([
-        [1, 1, 0, 0],
-        [-1, 1, 1, 0],
-        [0, -1, 1, 1],
-        [0, 0, -1, 1]
-    ])
-else:
-    capacity_matrix = np.array([
-        [0, 50, 30, 0, 0, 0],
-        [0, 0, 15, 40, 20, 0],
-        [0, 10, 0, 25, 0, 30],
-        [0, 0, 0, 0, 15, 10],
-        [0, 0, 0, 0, 0, 25],
-        [0, 0, 0, 0, 0, 0]
-    ])
-    A = np.array([
-        [1, 1, 0, 0, 0, 0],
-        [-1, 1, 1, 0, 0, 0],
-        [0, -1, 1, 1, 0, 0],
-        [0, 0, -1, 1, 1, 0],
-        [0, 0, 0, -1, 1, 1],
-        [0, 0, 0, 0, -1, 1]
-    ])
-
-# --- Linear Algebra Solver ---
-# Solve the linear system Ax = b for traffic volume vector x
+# ==========================================
+# 🧮 LINEAR ALGEBRA SOLVER
+# ==========================================
 try:
+    # Compute exact volume distribution ($Ax = b$)
     raw_traffic_flow = np.linalg.solve(A, b)
     traffic_flow = np.abs(np.round(raw_traffic_flow)).astype(int)
 except Exception as e:
-    st.error(f"Matrix Algebra Error: {e}")
+    st.error(f"Matrix Algebra Error: System is inconsistent. Details: {e}")
     st.stop()
 
-# --- Main Dashboard Layout ---
+# ==========================================
+# 📊 UI: DASHBOARD LAYOUT & METRICS
+# ==========================================
 col1, col2 = st.columns([1, 1.8], gap="large")
 
 with col1:
-    st.subheader("📊 Computed Volumes ($x$)")
-    metric_cols = st.columns(2)
-    for idx, vol in enumerate(traffic_flow):
-        metric_cols[idx % 2].metric(label=f"Intersection {idx+1} Flow", value=f"{vol} units")
-        
-    st.subheader("🧭 Real-Time Pathfinding")
-    st.markdown("Find the fastest route avoiding congestion.")
-    start_node = st.selectbox("Origin Intersection", range(1, num_nodes + 1)) - 1
-    end_node = st.selectbox("Destination Intersection", range(1, num_nodes + 1)) - 1
-
-with col2:
-    st.subheader("🗺️ Network Analysis")
-    tab1, tab2 = st.tabs(["Interactive Topology Heatmap", "Bottleneck & Delay Data"])
+    st.subheader("📊 Computed Routing Volumes ($x$)")
     
-    # Construct a directed graph representation of the traffic network
+    # Render metrics in visually distinct containers
+    for idx, vol in enumerate(traffic_flow):
+        with st.container(border=True):
+            st.metric(label=f"Intersection {idx+1} Outbound Flow", value=f"{vol} units")
+        
+    st.subheader("🧭 Pathfinding Engine")
+    st.markdown("Calculate fastest route circumventing network delay.")
+    start_node = st.selectbox("Origin Node", range(1, num_nodes + 1)) - 1
+    end_node = st.selectbox("Destination Node", range(1, num_nodes + 1)) - 1
+
+# ==========================================
+# 🗺️ GRAPH ANALYSIS & DIJKSTRA'S ALGORITHM
+# ==========================================
+with col2:
+    st.subheader("🗺️ Topological Analysis")
+    tab1, tab2 = st.tabs(["Interactive Network Heatmap", "Delay & Bottleneck Matrix"])
+    
+    # Initialize Directed Graph
     G = nx.from_numpy_array(capacity_matrix, create_using=nx.DiGraph)
     
-    # Assign dynamic edge weights (delay costs) based on traffic volume-to-capacity utilization
+    # Apply dynamic edge weights (Delay calculated via volume/capacity ratio)
     for u, v in G.edges():
         cap = capacity_matrix[u][v]
         vol = traffic_flow[u]
         utilization = vol / cap if cap > 0 else 0
-        delay = max(1, utilization * 10) 
-        G[u][v]['weight'] = delay
+        G[u][v]['weight'] = max(1.0, utilization * 10)
 
-    # Compute shortest path using Dijkstra's algorithm to circumvent congestion
+    # Compute Dijkstra's Shortest Path
     shortest_path_edges = []
     if start_node != end_node:
         try:
             path_nodes = nx.shortest_path(G, source=start_node, target=end_node, weight='weight')
             shortest_path_edges = [(path_nodes[i], path_nodes[i+1]) for i in range(len(path_nodes)-1)]
-            st.success(f"Fastest Route: **{' ➔ '.join([f'Int {n+1}' for n in path_nodes])}**")
+            st.success(f"Fastest Route Computed: **{' ➔ '.join([f'Int {n+1}' for n in path_nodes])}**")
         except nx.NetworkXNoPath:
-            st.warning("No available route between these intersections.")
+            st.error("Simulation Warning: No route available between selected nodes.")
 
     with tab1:
-        # Define strict geometric node layouts for visualization
+        # Define deterministic spatial coordinates for plotting
         if num_nodes == 4:
-            pos = {0: (0, 1), 1: (1, 1), 2: (1, 0), 3: (0, 0)} # Rectangle layout
+            pos = {0: (0, 1), 1: (1, 1), 2: (1, 0), 3: (0, 0)} # Rectangular constraint
         else:
-            pos = {i: (np.cos(np.pi/2 - i*np.pi/3), np.sin(np.pi/2 - i*np.pi/3)) for i in range(6)} # Hexagonal layout
+            pos = {i: (np.cos(np.pi/2 - i*np.pi/3), np.sin(np.pi/2 - i*np.pi/3)) for i in range(6)} # Hexagonal constraint
         
         fig = go.Figure()
         
-        # Render directed edges with color-coded congestion heatmaps
+        # Render edges with dynamic heatmap routing
         for u, v in G.edges():
             x0, y0 = pos[u]
             x1, y1 = pos[v]
@@ -132,21 +161,21 @@ with col2:
             cap = capacity_matrix[u][v]
             util = vol / cap if cap > 0 else 0
             
-            # Heatmap color logic: Red for bottlenecks, Orange for heavy, Green for clear
+            # Heatmap threshold logic
             if util > 1.0:
-                edge_color = '#ff4b4b' 
+                edge_color = '#ff4b4b' # Red (Congested)
             elif util > 0.7:
-                edge_color = '#ffa500' 
+                edge_color = '#ffa500' # Orange (Heavy Load)
             else:
-                edge_color = '#00ff99' 
+                edge_color = '#00ff99' # Green (Optimal Flow)
                 
             is_path = (u, v) in shortest_path_edges
             if is_path:
-                edge_color = '#00d4ff' # Highlight active path in neon blue
+                edge_color = '#00d4ff' # Cyan Override for Optimal Route
                 
-            line_width = 4 if is_path else 2
+            line_width = 4.5 if is_path else 2.5
             
-            # Draw directed edge arrows with standoffs to prevent node overlapping
+            # Draw Vector Arrows
             fig.add_annotation(
                 x=x1, y=y1, ax=x0, ay=y0,
                 xref='x', yref='y', axref='x', ayref='y',
@@ -154,23 +183,20 @@ with col2:
                 standoff=28, startstandoff=28
             )
             
-            # Offset labels along the edge vector to prevent clustering
+            # Draw Data Labels with Background Contrast
             label_x = x0 + 0.35 * (x1 - x0)
             label_y = y0 + 0.35 * (y1 - y0)
             
-            # Render edge volume ratio labels
             fig.add_annotation(
                 x=label_x, y=label_y,
                 text=f"{vol}/{cap}",
                 showarrow=False,
                 font=dict(color='#1f2937', size=11, family="Arial Black"),
                 bgcolor=edge_color,
-                bordercolor='white',
-                borderwidth=1,
-                borderpad=2
+                bordercolor='white', borderwidth=1, borderpad=3
             )
             
-        # Render network intersection nodes
+        # Render Intersection Nodes
         node_x = [pos[node][0] for node in G.nodes()]
         node_y = [pos[node][1] for node in G.nodes()]
         
@@ -178,7 +204,7 @@ with col2:
             x=node_x, y=node_y, mode='markers+text',
             text=[f"Int {i+1}" for i in range(num_nodes)],
             textposition="top center",
-            textfont=dict(color='white', size=15, family="Arial Black"),
+            textfont=dict(color='white', size=14, family="Arial Black"),
             marker=dict(size=45, color='#1f2937', line=dict(width=3, color='white')),
             hoverinfo='none'
         ))
@@ -194,7 +220,7 @@ with col2:
         st.plotly_chart(fig, use_container_width=True)
 
     with tab2:
-        # Calculate bottleneck delays and compile statistical data frame
+        # Compile System Delay Dataframe
         total_delay = 0
         results = []
         for i in range(num_nodes):
@@ -203,10 +229,10 @@ with col2:
                 utilization = max(0, traffic_flow[i]) / max_out
                 delay = utilization * 10
                 total_delay += delay
-                status = "🚨 CONGESTED" if traffic_flow[i] > max_out else "✅ Clear"
+                status = "🚨 CONGESTED" if traffic_flow[i] > max_out else "✅ OPTIMAL"
                 
                 results.append({
-                    "Intersection": f"Int {i+1}",
+                    "Node": f"Int {i+1}",
                     "Status": status,
                     "Routing Volume": traffic_flow[i],
                     "Max Capacity": max_out,
@@ -214,12 +240,12 @@ with col2:
                 })
             else:
                 results.append({
-                    "Intersection": f"Int {i+1}",
-                    "Status": "🛑 Terminal (End of Line)",
+                    "Node": f"Int {i+1}",
+                    "Status": "🛑 TERMINAL",
                     "Routing Volume": traffic_flow[i],
                     "Max Capacity": 0,
                     "Est. Delay (min)": 0.0
                 })
         
         st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
-        st.metric(label="System-Wide Delay Cost", value=f"{total_delay:.2f} mins")
+        st.metric(label="Total System Delay", value=f"{total_delay:.2f} minutes", delta_color="inverse")
