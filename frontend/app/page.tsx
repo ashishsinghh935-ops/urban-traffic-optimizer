@@ -1,69 +1,90 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import React, { useState, useCallback } from 'react';
+import ReactFlow, { Background, Controls, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge } from 'reactflow';
+import 'reactflow/dist/style.css';
+
+// Initial Traffic Intersections (Nodes)
+const initialNodes: Node[] = [
+  { id: 'A', position: { x: 100, y: 100 }, data: { label: 'Intersection A (Inflow)' }, style: { border: '2px solid #22c55e', padding: 10 } },
+  { id: 'B', position: { x: 400, y: 100 }, data: { label: 'Intersection B' }, style: { border: '1px solid #333', padding: 10 } },
+  { id: 'C', position: { x: 100, y: 300 }, data: { label: 'Intersection C' }, style: { border: '1px solid #333', padding: 10 } },
+  { id: 'D', position: { x: 400, y: 300 }, data: { label: 'Intersection D (Outflow)' }, style: { border: '2px solid #ef4444', padding: 10 } },
+];
+
+// Initial Roads (Edges)
+const initialEdges: Edge[] = [
+  { id: 'eA-B', source: 'A', target: 'B', animated: true, label: 'Pending...' },
+  { id: 'eA-C', source: 'A', target: 'C', animated: true, label: 'Pending...' },
+  { id: 'eB-D', source: 'B', target: 'D', animated: true, label: 'Pending...' },
+  { id: 'eC-D', source: 'C', target: 'D', animated: true, label: 'Pending...' },
+];
+
+export default function TrafficDashboard() {
+  const [nodes, setNodes] = useState<Node[]>(initialNodes);
+  const [edges, setEdges] = useState<Edge[]>(initialEdges);
+  const [status, setStatus] = useState("Awaiting Optimization...");
+
+  const onNodesChange = useCallback((changes: any) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
+  const onEdgesChange = useCallback((changes: any) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
+
+  const handleOptimize = async () => {
+    setStatus("Calculating route optimization...");
+    try {
+      const response = await fetch('http://127.0.0.1:8000/optimize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // Dummy incidence matrix and inflows for initial testing
+          incidence_matrix: [[1, 1, 0, 0], [0, -1, 1, 0], [-1, 0, 0, 1], [0, 0, -1, -1]],
+          external_inflows: [100, 0, 0, -100]
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === "success") {
+        setStatus(`Optimization Complete! Bottlenecks: ${data.bottlenecks_detected ? "Yes" : "No"}`);
+        // Update edge labels with real optimized flows from FastAPI
+        setEdges((eds) => eds.map((edge, index) => ({
+          ...edge,
+          label: `${data.optimized_flows[index]} units/hr`,
+          style: { stroke: data.optimized_flows[index] > 80 ? '#ef4444' : '#22c55e', strokeWidth: 2 }
+        })));
+      }
+    } catch (error) {
+      console.error("Backend connection failed:", error);
+      setStatus("Error: Cannot reach FastAPI backend.");
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex flex-col h-screen w-full bg-zinc-50 font-sans">
+      <header className="p-6 bg-white shadow-sm border-b flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-900">Traffic Flow Optimizer</h1>
+          <p className="text-zinc-500 text-sm">{status}</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        <button 
+          onClick={handleOptimize}
+          className="bg-black text-white px-6 py-2 rounded-md hover:bg-zinc-800 transition-all font-medium shadow-sm"
+        >
+          Run Math Engine
+        </button>
+      </header>
+      
+      <div className="flex-1 w-full relative">
+        <ReactFlow 
+          nodes={nodes} 
+          edges={edges} 
+          onNodesChange={onNodesChange} 
+          onEdgesChange={onEdgesChange}
+          fitView
+        >
+          <Background color="#ccc" gap={16} />
+          <Controls />
+        </ReactFlow>
+      </div>
     </div>
   );
 }
