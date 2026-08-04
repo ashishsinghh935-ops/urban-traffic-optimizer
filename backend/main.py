@@ -70,7 +70,7 @@ def optimize_traffic(network_data: TrafficNetworkRequest):
         x, residuals, rank, s = np.linalg.lstsq(A, b, rcond=None)
         
         # Format the output flows (rounding to 2 decimal places for a clean React UI display)
-        optimized_flows = [round(float(val), 2) for val in x.flatten()]
+        optimized_flows = [int(round(float(val))) for val in x.flatten()]
         
         # Simple bottleneck detection: if any routing volume exceeds a threshold (e.g., 100 units), flag it
         threshold = 100.0
