@@ -207,28 +207,29 @@ export default function TrafficDashboard() {
             Run Math Engine
           </button>
 
-          <div className="mt-2 p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-700 shadow-inner">
-            <span className="font-bold block mb-1 text-slate-900">System Status:</span> 
-            <span className="text-slate-600">{status}</span>
-          </div>
-
-          {/* New Real-World Presets Button */}
-          <div className="mt-4 border-t pt-6">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
+          {/* New Real-World Presets Button - MOVED UP HERE */}
+          <div className="mt-2 border-t pt-4">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
               Real-World Networks
             </h3>
             <button 
               onClick={loadConnaughtPlacePreset}
-              className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 shadow-sm border border-slate-700"
+              className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-200 shadow-sm border border-slate-700 text-sm"
             >
               <svg className="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
               </svg>
               Load Connaught Place
             </button>
-            <p className="text-xs text-gray-500 mt-3 text-center">
+            <p className="text-xs text-gray-500 mt-2 text-center leading-tight">
               Automatically maps radial flows and inner-circle matrices for Ax = b calculation.
             </p>
+          </div>
+
+          {/* System Status - MOVED DOWN HERE */}
+          <div className="mt-2 p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-700 shadow-inner">
+            <span className="font-bold block mb-1 text-slate-900">System Status:</span> 
+            <span className="text-slate-600">{status}</span>
           </div>
 
         </div>
