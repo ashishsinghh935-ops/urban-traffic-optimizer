@@ -84,7 +84,7 @@ export default function TrafficDashboard() {
     inflows[nodes.length - 1] = -outflowD;
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/optimize', {
+      const response = await fetch('https://urban-traffic-optimizer.onrender.com/optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
