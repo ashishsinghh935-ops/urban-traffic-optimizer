@@ -4,18 +4,39 @@ import React, { useState, useCallback } from 'react';
 import ReactFlow, { Background, Controls, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge, Connection } from 'reactflow';
 import 'reactflow/dist/style.css';
 
+// 1. Premium Light Theme Node Styling
 const initialNodes: Node[] = [
-  { id: 'A', position: { x: 150, y: 100 }, data: { label: 'Intersection A (Inflow)' }, style: { border: '2px solid #22c55e', padding: 10 } },
-  { id: 'B', position: { x: 450, y: 100 }, data: { label: 'Intersection B' }, style: { border: '1px solid #333', padding: 10 } },
-  { id: 'C', position: { x: 150, y: 300 }, data: { label: 'Intersection C' }, style: { border: '1px solid #333', padding: 10 } },
-  { id: 'D', position: { x: 450, y: 300 }, data: { label: 'Intersection D (Outflow)' }, style: { border: '2px solid #ef4444', padding: 10 } },
+  { 
+    id: 'A', 
+    position: { x: 150, y: 100 }, 
+    data: { label: 'Intersection A (Inflow)' }, 
+    className: 'bg-emerald-50 border-2 border-emerald-400 rounded-xl shadow-sm text-emerald-900 font-semibold px-5 py-3'
+  },
+  { 
+    id: 'B', 
+    position: { x: 450, y: 100 }, 
+    data: { label: 'Intersection B' }, 
+    className: 'bg-white border-2 border-slate-200 rounded-xl shadow-sm text-slate-700 font-semibold px-5 py-3'
+  },
+  { 
+    id: 'C', 
+    position: { x: 150, y: 300 }, 
+    data: { label: 'Intersection C' }, 
+    className: 'bg-white border-2 border-slate-200 rounded-xl shadow-sm text-slate-700 font-semibold px-5 py-3'
+  },
+  { 
+    id: 'D', 
+    position: { x: 450, y: 300 }, 
+    data: { label: 'Intersection D (Outflow)' }, 
+    className: 'bg-rose-50 border-2 border-rose-400 rounded-xl shadow-sm text-rose-900 font-semibold px-5 py-3'
+  },
 ];
 
 const initialEdges: Edge[] = [
-  { id: 'eA-B', source: 'A', target: 'B', animated: true, label: 'Pending...' },
-  { id: 'eA-C', source: 'A', target: 'C', animated: true, label: 'Pending...' },
-  { id: 'eB-D', source: 'B', target: 'D', animated: true, label: 'Pending...' },
-  { id: 'eC-D', source: 'C', target: 'D', animated: true, label: 'Pending...' },
+  { id: 'eA-B', source: 'A', target: 'B', animated: true, label: 'Pending...', style: { strokeWidth: 2 } },
+  { id: 'eA-C', source: 'A', target: 'C', animated: true, label: 'Pending...', style: { strokeWidth: 2 } },
+  { id: 'eB-D', source: 'B', target: 'D', animated: true, label: 'Pending...', style: { strokeWidth: 2 } },
+  { id: 'eC-D', source: 'C', target: 'D', animated: true, label: 'Pending...', style: { strokeWidth: 2 } },
 ];
 
 export default function TrafficDashboard() {
@@ -24,15 +45,13 @@ export default function TrafficDashboard() {
   const [status, setStatus] = useState("Awaiting Optimization...");
   const [inflowA, setInflowA] = useState(100);
   const [outflowD, setOutflowD] = useState(100);
-  
-  // New state for the bottleneck capacity threshold slider
   const [capacityThreshold, setCapacityThreshold] = useState(80);
 
   const onNodesChange = useCallback((changes: any) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
   const onEdgesChange = useCallback((changes: any) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
   
   const onConnect = useCallback((params: Connection) => {
-    const newEdge = { ...params, id: `e${params.source}-${params.target}`, animated: true, label: 'Pending...' };
+    const newEdge = { ...params, id: `e${params.source}-${params.target}`, animated: true, label: 'Pending...', style: { strokeWidth: 2 } };
     setEdges((eds) => addEdge(newEdge, eds));
   }, []);
 
@@ -42,7 +61,7 @@ export default function TrafficDashboard() {
       id: nextId,
       position: { x: Math.random() * 200 + 250, y: Math.random() * 200 + 150 },
       data: { label: `Intersection ${nextId}` },
-      style: { border: '1px solid #333', padding: 10 }
+      className: 'bg-white border-2 border-slate-200 rounded-xl shadow-sm text-slate-700 font-semibold px-5 py-3'
     };
     setNodes((nds) => [...nds, newNode]);
   };
@@ -80,11 +99,14 @@ export default function TrafficDashboard() {
         setStatus(`Optimization Complete! Bottlenecks: ${data.bottlenecks_detected ? "Yes" : "No"}`);
         setEdges((eds) => eds.map((edge, index) => {
           const flow = data.optimized_flows[index] || 0;
+          const isBottleneck = flow >= capacityThreshold;
           return {
             ...edge,
             label: `${flow} units/hr`,
-            // Using our interactive slider threshold here!
-            style: { stroke: flow >= capacityThreshold ? '#ef4444' : '#22c55e', strokeWidth: 2 }
+            style: { 
+              stroke: isBottleneck ? '#f43f5e' : '#10b981', 
+              strokeWidth: isBottleneck ? 3 : 2 
+            }
           };
         }));
       }
@@ -95,28 +117,42 @@ export default function TrafficDashboard() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-zinc-50 font-sans">
-      <div className="w-80 bg-white border-r shadow-sm flex flex-col">
-        <div className="p-6 border-b">
-          <h1 className="text-xl font-bold text-zinc-900">Traffic Settings</h1>
-          <p className="text-xs text-zinc-500 mt-1">Adjust flow and run the engine.</p>
+    <div className="flex h-screen w-full bg-slate-50 font-sans selection:bg-blue-100">
+      
+      {/* 2. Premium Sidebar UI */}
+      <div className="w-80 bg-white border-r border-slate-200 shadow-[4px_0_24px_rgba(0,0,0,0.02)] flex flex-col z-10">
+        <div className="p-6 border-b border-slate-100">
+          <h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+            FlowOptimizer
+          </h1>
+          <p className="text-xs text-slate-500 mt-1 font-medium tracking-wide uppercase">Math Engine Dashboard</p>
         </div>
         
-        <div className="p-6 flex-1 flex flex-col gap-5 overflow-y-auto">
+        <div className="p-6 flex-1 flex flex-col gap-6 overflow-y-auto">
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-zinc-700">Inflow at Node A (units/hr)</label>
-            <input type="number" value={inflowA} onChange={(e) => setInflowA(Number(e.target.value))} className="border p-2 rounded-md text-sm text-black" />
+            <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Inflow at Node A</label>
+            <input 
+              type="number" 
+              value={inflowA} 
+              onChange={(e) => setInflowA(Number(e.target.value))} 
+              className="w-full border border-slate-300 px-3 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm text-slate-800 font-medium" 
+            />
           </div>
           
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-zinc-700">Outflow at Last Node (units/hr)</label>
-            <input type="number" value={outflowD} onChange={(e) => setOutflowD(Number(e.target.value))} className="border p-2 rounded-md text-sm text-black" />
+            <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Outflow at Last Node</label>
+            <input 
+              type="number" 
+              value={outflowD} 
+              onChange={(e) => setOutflowD(Number(e.target.value))} 
+              className="w-full border border-slate-300 px-3 py-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm text-slate-800 font-medium" 
+            />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <div className="flex justify-between text-sm font-semibold text-zinc-700">
+          <div className="flex flex-col gap-3 pt-2">
+            <div className="flex justify-between items-center text-xs font-bold text-slate-600 uppercase tracking-wide">
               <span>Bottleneck Limit</span>
-              <span className="text-blue-600">{capacityThreshold} units</span>
+              <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md">{capacityThreshold} units</span>
             </div>
             <input 
               type="range" 
@@ -124,28 +160,45 @@ export default function TrafficDashboard() {
               max="200" 
               value={capacityThreshold} 
               onChange={(e) => setCapacityThreshold(Number(e.target.value))} 
-              className="accent-black cursor-pointer"
+              className="w-full accent-blue-600 cursor-pointer h-2 bg-slate-200 rounded-lg appearance-none"
             />
           </div>
 
-          <button onClick={handleAddIntersection} className="w-full bg-zinc-200 text-zinc-800 px-4 py-2 rounded-md hover:bg-zinc-300 transition-all font-medium text-sm">
+          <hr className="border-slate-100 my-2" />
+
+          <button 
+            onClick={handleAddIntersection} 
+            className="w-full bg-slate-100 text-slate-700 px-4 py-2.5 rounded-lg hover:bg-slate-200 transition-colors font-semibold text-sm border border-slate-200"
+          >
             + Add New Intersection
           </button>
 
-          <button onClick={handleOptimize} className="w-full bg-black text-white px-4 py-3 rounded-md hover:bg-zinc-800 transition-all font-medium shadow-sm mt-2">
+          <button 
+            onClick={handleOptimize} 
+            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-3 rounded-xl hover:opacity-90 transition-opacity font-bold shadow-md shadow-blue-500/20 mt-2"
+          >
             Run Math Engine
           </button>
 
-          <div className="mt-2 p-4 bg-zinc-100 rounded-md border text-sm text-zinc-700">
-            <strong>Status:</strong> <br/> {status}
+          <div className="mt-2 p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-700 shadow-inner">
+            <span className="font-bold block mb-1 text-slate-900">System Status:</span> 
+            <span className="text-slate-600">{status}</span>
           </div>
         </div>
       </div>
       
+      {/* 3. Refined Canvas */}
       <div className="flex-1 relative">
-        <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} fitView>
-          <Background color="#ccc" gap={16} />
-          <Controls />
+        <ReactFlow 
+          nodes={nodes} 
+          edges={edges} 
+          onNodesChange={onNodesChange} 
+          onEdgesChange={onEdgesChange} 
+          onConnect={onConnect} 
+          fitView
+        >
+          <Background color="#cbd5e1" gap={20} size={1.5} />
+          <Controls className="bg-white border-slate-200 shadow-md rounded-lg" />
         </ReactFlow>
       </div>
     </div>
