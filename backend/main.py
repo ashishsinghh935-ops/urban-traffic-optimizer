@@ -35,7 +35,7 @@ class TrafficNetworkRequest(BaseModel):
 
 class TrafficNetworkResponse(BaseModel):
     status: str
-    optimized_flows: List[float]
+    optimized_flows": [round(float(f), 2) for f in flows]
     bottlenecks_detected: bool
     message: str
 
