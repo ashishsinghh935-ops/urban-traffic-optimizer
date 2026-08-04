@@ -1,10 +1,9 @@
 "use client";
 
 import React, { useState, useCallback } from 'react';
-import ReactFlow, { Background, Controls, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge } from 'reactflow';
+import ReactFlow, { Background, Controls, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge, Connection } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-// Initial Traffic Intersections (Nodes)
 const initialNodes: Node[] = [
   { id: 'A', position: { x: 150, y: 100 }, data: { label: 'Intersection A (Inflow)' }, style: { border: '2px solid #22c55e', padding: 10 } },
   { id: 'B', position: { x: 450, y: 100 }, data: { label: 'Intersection B' }, style: { border: '1px solid #333', padding: 10 } },
@@ -12,7 +11,6 @@ const initialNodes: Node[] = [
   { id: 'D', position: { x: 450, y: 300 }, data: { label: 'Intersection D (Outflow)' }, style: { border: '2px solid #ef4444', padding: 10 } },
 ];
 
-// Initial Roads (Edges)
 const initialEdges: Edge[] = [
   { id: 'eA-B', source: 'A', target: 'B', animated: true, label: 'Pending...' },
   { id: 'eA-C', source: 'A', target: 'C', animated: true, label: 'Pending...' },
@@ -24,24 +22,55 @@ export default function TrafficDashboard() {
   const [nodes, setNodes] = useState<Node[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
   const [status, setStatus] = useState("Awaiting Optimization...");
-  
-  // New state variables for dynamic inputs
   const [inflowA, setInflowA] = useState(100);
   const [outflowD, setOutflowD] = useState(100);
 
   const onNodesChange = useCallback((changes: any) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
   const onEdgesChange = useCallback((changes: any) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
+  
+  // 1. Let users drag and connect roads between nodes!
+  const onConnect = useCallback((params: Connection) => {
+    const newEdge = { ...params, id: `e${params.source}-${params.target}`, animated: true, label: 'Pending...' };
+    setEdges((eds) => addEdge(newEdge, eds));
+  }, []);
+
+  // 2. Let users spawn new intersections
+  const handleAddIntersection = () => {
+    const nextId = String.fromCharCode(65 + nodes.length); // Generates E, F, G, etc.
+    const newNode = {
+      id: nextId,
+      position: { x: Math.random() * 200 + 250, y: Math.random() * 200 + 150 },
+      data: { label: `Intersection ${nextId}` },
+      style: { border: '1px solid #333', padding: 10 }
+    };
+    setNodes((nds) => [...nds, newNode]);
+  };
 
   const handleOptimize = async () => {
+    if (edges.length === 0) return setStatus("Add some roads first!");
     setStatus("Calculating route optimization...");
+
+    // 3. The Dynamic Matrix Builder
+    const matrix: number[][] = Array(nodes.length).fill(0).map(() => Array(edges.length).fill(0));
+    
+    edges.forEach((edge, edgeIndex) => {
+      const sourceIndex = nodes.findIndex(n => n.id === edge.source);
+      const targetIndex = nodes.findIndex(n => n.id === edge.target);
+      if (sourceIndex !== -1) matrix[sourceIndex][edgeIndex] = 1;  // Traffic leaves source
+      if (targetIndex !== -1) matrix[targetIndex][edgeIndex] = -1; // Traffic enters target
+    });
+
+    const inflows = Array(nodes.length).fill(0);
+    inflows[0] = inflowA; // Assuming First node is always the source
+    inflows[nodes.length - 1] = -outflowD; // Assuming Last node is always the sink
+
     try {
       const response = await fetch('http://127.0.0.1:8000/optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          incidence_matrix: [[1, 1, 0, 0], [0, -1, 1, 0], [-1, 0, 0, 1], [0, 0, -1, -1]],
-          // Using our dynamic input values here!
-          external_inflows: [inflowA, 0, 0, -outflowD] 
+          incidence_matrix: matrix,
+          external_inflows: inflows
         })
       });
       
@@ -51,9 +80,8 @@ export default function TrafficDashboard() {
         setStatus(`Optimization Complete! Bottlenecks: ${data.bottlenecks_detected ? "Yes" : "No"}`);
         setEdges((eds) => eds.map((edge, index) => ({
           ...edge,
-          label: `${data.optimized_flows[index]} units/hr`,
-          // Changed bottleneck threshold to 80 for visual testing
-          style: { stroke: data.optimized_flows[index] >= 80 ? '#ef4444' : '#22c55e', strokeWidth: 2 }
+          label: `${data.optimized_flows[index] || 0} units/hr`,
+          style: { stroke: (data.optimized_flows[index] || 0) >= 80 ? '#ef4444' : '#22c55e', strokeWidth: 2 }
         })));
       }
     } catch (error) {
@@ -64,8 +92,6 @@ export default function TrafficDashboard() {
 
   return (
     <div className="flex h-screen w-full bg-zinc-50 font-sans">
-      
-      {/* Control Panel Sidebar */}
       <div className="w-80 bg-white border-r shadow-sm flex flex-col">
         <div className="p-6 border-b">
           <h1 className="text-xl font-bold text-zinc-900">Traffic Settings</h1>
@@ -75,28 +101,18 @@ export default function TrafficDashboard() {
         <div className="p-6 flex-1 flex flex-col gap-6">
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold text-zinc-700">Inflow at Node A (units/hr)</label>
-            <input 
-              type="number" 
-              value={inflowA}
-              onChange={(e) => setInflowA(Number(e.target.value))}
-              className="border p-2 rounded-md text-sm text-black"
-            />
+            <input type="number" value={inflowA} onChange={(e) => setInflowA(Number(e.target.value))} className="border p-2 rounded-md text-sm text-black" />
           </div>
-
           <div className="flex flex-col gap-2">
-            <label className="text-sm font-semibold text-zinc-700">Outflow at Node D (units/hr)</label>
-            <input 
-              type="number" 
-              value={outflowD}
-              onChange={(e) => setOutflowD(Number(e.target.value))}
-              className="border p-2 rounded-md text-sm text-black"
-            />
+            <label className="text-sm font-semibold text-zinc-700">Outflow at Last Node (units/hr)</label>
+            <input type="number" value={outflowD} onChange={(e) => setOutflowD(Number(e.target.value))} className="border p-2 rounded-md text-sm text-black" />
           </div>
 
-          <button 
-            onClick={handleOptimize}
-            className="w-full bg-black text-white px-4 py-3 rounded-md hover:bg-zinc-800 transition-all font-medium shadow-sm mt-4"
-          >
+          <button onClick={handleAddIntersection} className="w-full bg-zinc-200 text-zinc-800 px-4 py-2 rounded-md hover:bg-zinc-300 transition-all font-medium text-sm">
+            + Add New Intersection
+          </button>
+
+          <button onClick={handleOptimize} className="w-full bg-black text-white px-4 py-3 rounded-md hover:bg-zinc-800 transition-all font-medium shadow-sm mt-4">
             Run Math Engine
           </button>
 
@@ -106,15 +122,8 @@ export default function TrafficDashboard() {
         </div>
       </div>
       
-      {/* React Flow Canvas */}
       <div className="flex-1 relative">
-        <ReactFlow 
-          nodes={nodes} 
-          edges={edges} 
-          onNodesChange={onNodesChange} 
-          onEdgesChange={onEdgesChange}
-          fitView
-        >
+        <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} fitView>
           <Background color="#ccc" gap={16} />
           <Controls />
         </ReactFlow>
