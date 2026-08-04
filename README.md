@@ -1,40 +1,38 @@
-![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python&logoColor=white)
-![Streamlit](https://img.shields.io/badge/Streamlit-App-red?style=flat-square&logo=streamlit&logoColor=white)
-![MATLAB](https://img.shields.io/badge/MATLAB-Simulation-orange?style=flat-square&logo=mathworks&logoColor=white)
-![GitHub](https://img.shields.io/badge/GitHub-Repository-black?style=flat-square&logo=github&logoColor=white)
-
 # 🚦 Urban Traffic Flow & Route Optimization Solver
 
-A dual-engine mathematical modeling project designed to optimize urban traffic networks, simulate intersection flow conservation, and detect bottlenecks using linear algebra and graph theory. 
+A full-stack mathematical modeling application designed to optimize urban traffic networks, simulate intersection flow conservation, and detect bottlenecks using linear algebra and graph theory.
 
-This repository contains both a core **highly optimized MATLAB simulation script** and a live **Python Streamlit dashboard** featuring interactive network topologies and real-time pathfinding.
+![Live on Vercel](https://img.shields.io/badge/Deployed-Vercel-black?logo=vercel)
+![Live on Render](https://img.shields.io/badge/Backend-Render-46E3B7?logo=render)
+![Next.js](https://img.shields.io/badge/Frontend-Next.js-black?logo=next.js)
+![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi)
 
-## 📚 Mathematical Foundation
-This project heavily relies on the principles of linear transformations and network flow conservation.
-*   **System Equation ($Ax = b$):** The core algorithm models the traffic grid where the incidence matrix ($A$) represents intersection connections (inflows as $+1$, outflows as $-1$). 
-*   **Vector Variables:** By passing the external net traffic flow into vector $b$, the system solves for vector $x$ to find the exact internal routing volumes required to prevent gridlock.
+## 🌟 Live Demo
+**[Launch the Live Dashboard Here]**(Insert your Vercel Link Here)
 
-## ✨ Advanced Features
-*   **Linear Algebra Matrix Solver:** Computes exact traffic volume vectors across multi-node urban grids.
-*   **Dynamic Bottleneck Detection:** Automatically flags intersections exceeding safe road capacity and calculates estimated delay times.
-*   **Real-Time Pathfinding (Dijkstra's Algorithm):** Calculates the absolute fastest route through the city grid by actively routing around congested, high-delay roads.
-*   **Optimized Web Dashboard:** A sleek, user-friendly frontend built with Plotly and Streamlit. Now fully optimized with `@st.cache_data` for lightning-fast matrix loading and state management.
-*   **Interactive Heatmaps:** Both the Python frontend and MATLAB engine generate dynamic, color-coded topological graphs (Green/Orange/Red) based on real-time road utilization ratios.
+---
 
-## 🛠️ Technology Stack
-*   **Core Engines:** MATLAB, Python 3
-*   **Web Framework:** Streamlit
-*   **Data & Math:** NumPy, Pandas
-*   **Network Graphing:** NetworkX, Plotly
+## 🏗️ Architecture & Tech Stack
 
-## 🚀 How to Run the Web Dashboard
-**To run it locally:**
-1. Clone this repository.
-2. Install the requirements: `pip install -r requirements.txt`
-3. Launch the app: `streamlit run app.py`
+This project was recently migrated from a monolithic Streamlit script into a modern, decoupled full-stack architecture:
 
-## 🖥️ How to Run the MATLAB Simulation
-1. Open MATLAB or MATLAB Online.
-2. Run `traffic_simulator.m`.
-3. When prompted in the Command Window, input your dynamic external traffic flow vector (e.g., `[40; -10; -20; -10; 10; -10]`).
-4. The script will output the volume vectors, print a bottleneck/delay analysis, calculate the shortest route, and generate a color-coded directed graph highlighting the optimal path.
+*   **Frontend (`/frontend`):** Built with **Next.js**, **React**, **Tailwind CSS**, and **React Flow**. Provides a highly interactive, drag-and-drop node canvas for users to map out custom intersection topologies.
+*   **Backend (`/backend`):** Built with **Python**, **FastAPI**, and **NumPy**. Acts as the dedicated math engine, receiving incidence matrices from the frontend, calculating flow conservation ($Ax = b$), and returning optimized routing data.
+*   **Legacy Simulation:** Contains the original `traffic_simulator.m` MATLAB script for offline, high-precision mathematical modeling.
+
+## 🚀 Key Features
+*   **Interactive Node Graphing:** Dynamically add intersections and connect roads via a visually intuitive UI.
+*   **Real-Time Math Engine:** Instantly calculates optimized traffic flows across complex networks using matrix math.
+*   **Dynamic Bottleneck Detection:** Visually highlights roads that exceed user-defined capacity limits in red.
+
+---
+
+## 💻 Running the Project Locally
+
+To run this project on your local machine, you will need to start both the backend and frontend servers.
+
+### 1. Start the FastAPI Backend
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
