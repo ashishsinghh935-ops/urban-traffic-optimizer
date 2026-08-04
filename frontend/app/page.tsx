@@ -116,6 +116,33 @@ export default function TrafficDashboard() {
     }
   };
 
+  const loadConnaughtPlacePreset = () => {
+    const cpNodes = [
+      { id: 'cp-center', position: { x: 400, y: 300 }, data: { label: 'Rajiv Chowk (Inner Hub)' }, type: 'default' },
+      { id: 'cp-north', position: { x: 400, y: 100 }, data: { label: 'Minto Road (Inflow)' }, type: 'input' },
+      { id: 'cp-east', position: { x: 600, y: 300 }, data: { label: 'Barakhamba Rd (Radial)' }, type: 'default' },
+      { id: 'cp-south', position: { x: 400, y: 500 }, data: { label: 'Janpath (Outflow)' }, type: 'output' },
+      { id: 'cp-west', position: { x: 200, y: 300 }, data: { label: 'Sansad Marg (Radial)' }, type: 'default' },
+    ];
+
+    const cpEdges = [
+      // Outer Ring Connections
+      { id: 'e-n-e', source: 'cp-north', target: 'cp-east', animated: true, type: 'smoothstep' },
+      { id: 'e-e-s', source: 'cp-east', target: 'cp-south', animated: true, type: 'smoothstep' },
+      { id: 'e-s-w', source: 'cp-south', target: 'cp-west', animated: true, type: 'smoothstep' },
+      { id: 'e-w-n', source: 'cp-west', target: 'cp-north', animated: true, type: 'smoothstep' },
+      
+      // Radial Spokes connecting to the Hub
+      { id: 'e-n-c', source: 'cp-north', target: 'cp-center', animated: true },
+      { id: 'e-c-s', source: 'cp-center', target: 'cp-south', animated: true },
+      { id: 'e-w-c', source: 'cp-west', target: 'cp-center', animated: true },
+      { id: 'e-c-e', source: 'cp-center', target: 'cp-east', animated: true },
+    ];
+
+    setNodes(cpNodes);
+    setEdges(cpEdges);
+  };
+  
   return (
     <div className="flex h-screen w-full bg-slate-50 font-sans selection:bg-blue-100">
       
@@ -184,6 +211,26 @@ export default function TrafficDashboard() {
             <span className="font-bold block mb-1 text-slate-900">System Status:</span> 
             <span className="text-slate-600">{status}</span>
           </div>
+
+          {/* New Real-World Presets Button */}
+          <div className="mt-4 border-t pt-6">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
+              Real-World Networks
+            </h3>
+            <button 
+              onClick={loadConnaughtPlacePreset}
+              className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 shadow-sm border border-slate-700"
+            >
+              <svg className="w-4 h-4 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+              Load Connaught Place
+            </button>
+            <p className="text-xs text-gray-500 mt-3 text-center">
+              Automatically maps radial flows and inner-circle matrices for Ax = b calculation.
+            </p>
+          </div>
+
         </div>
       </div>
       
