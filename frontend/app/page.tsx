@@ -116,12 +116,13 @@ export default function TrafficDashboard() {
   };
 
   const loadConnaughtPlacePreset = () => {
+    // Added draggable: false and selectable: false directly to nodes to force a hard lock
     const cpNodes = [
-      { id: 'cp-center', position: { x: 400, y: 300 }, data: { label: 'Rajiv Chowk (Hub)' }, className: defaultNodeStyle },
-      { id: 'cp-north', position: { x: 400, y: 100 }, data: { label: 'Minto Rd (In)' }, className: inflowNodeStyle },
-      { id: 'cp-east', position: { x: 600, y: 300 }, data: { label: 'Barakhamba (Rad)' }, className: defaultNodeStyle },
-      { id: 'cp-south', position: { x: 400, y: 500 }, data: { label: 'Janpath (Out)' }, className: outflowNodeStyle },
-      { id: 'cp-west', position: { x: 200, y: 300 }, data: { label: 'Sansad Marg (Rad)' }, className: defaultNodeStyle },
+      { id: 'cp-center', position: { x: 400, y: 300 }, data: { label: 'Rajiv Chowk (Hub)' }, className: defaultNodeStyle, draggable: false, selectable: false },
+      { id: 'cp-north', position: { x: 400, y: 100 }, data: { label: 'Minto Rd (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
+      { id: 'cp-east', position: { x: 600, y: 300 }, data: { label: 'Barakhamba (Rad)' }, className: defaultNodeStyle, draggable: false, selectable: false },
+      { id: 'cp-south', position: { x: 400, y: 500 }, data: { label: 'Janpath (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
+      { id: 'cp-west', position: { x: 200, y: 300 }, data: { label: 'Sansad Marg (Rad)' }, className: defaultNodeStyle, draggable: false, selectable: false },
     ];
 
     const cpEdges = [
@@ -142,7 +143,9 @@ export default function TrafficDashboard() {
   };
 
   const resetToCustom = () => {
-    setNodes(initialNodes);
+    // Reset nodes to be interactable again by spreading and removing custom overrides if any
+    const unlockedNodes = initialNodes.map(node => ({ ...node, draggable: true, selectable: true }));
+    setNodes(unlockedNodes);
     setEdges(initialEdges);
     setIsLocked(false);
     setShowAnalysis(false);
@@ -247,8 +250,9 @@ export default function TrafficDashboard() {
         <ReactFlow 
           nodes={nodes} 
           edges={edges} 
-          onNodesChange={onNodesChange} 
-          onEdgesChange={onEdgesChange} 
+          // Undefining the change handlers entirely when locked prevents ANY movement data from processing
+          onNodesChange={isLocked ? undefined : onNodesChange} 
+          onEdgesChange={isLocked ? undefined : onEdgesChange} 
           onConnect={onConnect} 
           nodesDraggable={!isLocked}
           nodesConnectable={!isLocked}
@@ -257,7 +261,7 @@ export default function TrafficDashboard() {
           className="bg-slate-50"
         >
           <Background color="#cbd5e1" gap={20} size={1} />
-          <Controls className="bg-white border-slate-200 fill-slate-600 shadow-sm" />
+          <Controls className="bg-white border-slate-200 fill-slate-600 shadow-sm" showInteractive={false} />
         </ReactFlow>
 
         {/* Analysis Drawer */}
