@@ -44,7 +44,16 @@ At the core of the engine is the principle of flow conservation (what goes into 
 To run this project on your local machine, you will need to start both the backend and frontend servers.
 
 ### 1. Start the FastAPI Backend
+Open a terminal window and run:
 ```bash
 cd backend
 pip install -r requirements.txt
 uvicorn main:app --reload
+
+ 2. Start the Next.js Frontend
+Open a second terminal window and run:
+cd frontend
+npm install
+npm run dev
+
+Once both are running, open your browser and navigate to http://localhost:3000.
