@@ -21,9 +21,21 @@ This project was recently migrated from a monolithic Streamlit script into a mod
 *   **Legacy Simulation:** Contains the original `traffic_simulator.m` MATLAB script for offline, high-precision mathematical modeling.
 
 ## 🚀 Key Features
+
 *   **Interactive Node Graphing:** Dynamically add intersections and connect roads via a visually intuitive UI.
 *   **Real-Time Math Engine:** Instantly calculates optimized traffic flows across complex networks using matrix math.
 *   **Dynamic Bottleneck Detection:** Visually highlights roads that exceed user-defined capacity limits in red.
+*   **Real-World Topology (Delhi):** Includes a pre-configured, hard-locked model of **Connaught Place**. This preset accurately maps the iconic hub-and-spoke radial infrastructure (Rajiv Chowk inner hub, outer circle blocks, and major radials like Janpath) to test the solver against real-world traffic paradigms.
+*   **Real-Time Analytics Drawer:** Instantly tracks total network load, peak bottleneck volume, and active stress points based on user-defined capacity thresholds.
+
+---
+
+## 🧮 The Mathematics (Network Flow)
+
+At the core of the engine is the principle of flow conservation (what goes into an intersection must come out). 
+1. **Incidence Matrix ($A$):** The UI compiles the graph into a matrix where rows represent intersections and columns represent roads. 
+2. **External Flow Vector ($b$):** Inflows and outflows are mapped to define the constraints of the network.
+3. **Solver:** The system computes the vector $x$ (optimized traffic volume per road) by solving the linear system $Ax = b$, automatically adjusting for directional magnitudes using a least-squares approach.
 
 ---
 
