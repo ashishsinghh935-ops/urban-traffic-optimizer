@@ -98,7 +98,8 @@ export default function TrafficDashboard() {
       if (data.status === "success") {
         setStatus(`Optimization Complete! Bottlenecks: ${data.bottlenecks_detected ? "Yes" : "No"}`);
         setEdges((eds) => eds.map((edge, index) => {
-          const flow = data.optimized_flows[index] || 0;
+          // Wrapped in Math.abs() to fix the negative values!
+          const flow = Math.abs(data.optimized_flows[index] || 0); 
           const isBottleneck = flow >= capacityThreshold;
           return {
             ...edge,
