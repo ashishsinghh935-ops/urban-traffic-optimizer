@@ -8,7 +8,7 @@ A full-stack mathematical modeling application designed to optimize urban traffi
 ![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi)
 
 ## 🌟 Live Demo
-**[Launch the Live Dashboard Here]**urban-traffic-optimizer.vercel.app/
+urban-traffic-optimizer.vercel.app/
 
 ---
 
