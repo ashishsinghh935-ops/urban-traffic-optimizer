@@ -49,11 +49,13 @@ Open a terminal window and run:
 cd backend
 pip install -r requirements.txt
 uvicorn main:app --reload
+```
 
- 2. Start the Next.js Frontend
+### 2. Start the Next.js Frontend
 Open a second terminal window and run:
+```bash
 cd frontend
 npm install
 npm run dev
-
-Once both are running, open your browser and navigate to http://localhost:3000.
+```
+### Once both are running, open your browser and navigate to http://localhost:3000.
