@@ -5,7 +5,6 @@ import Link from 'next/link';
 import ReactFlow, { Background, Controls, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge, Connection } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-// 1. Clean Professional Light Theme Node Styling
 const defaultNodeStyle = 'bg-white border-2 border-slate-200 rounded-lg shadow-sm text-slate-700 font-semibold px-4 py-2 text-sm';
 const inflowNodeStyle = 'bg-blue-50 border-2 border-blue-400 rounded-lg shadow-sm text-blue-900 font-semibold px-4 py-2 text-sm';
 const outflowNodeStyle = 'bg-indigo-50 border-2 border-indigo-400 rounded-lg shadow-sm text-indigo-900 font-semibold px-4 py-2 text-sm';
@@ -32,7 +31,6 @@ export default function TrafficDashboard() {
   const [outflowD, setOutflowD] = useState(100);
   const [capacityThreshold, setCapacityThreshold] = useState(80);
   
-  // States for locking and analysis
   const [isLocked, setIsLocked] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [metrics, setMetrics] = useState({ totalFlow: 0, maxFlow: 0, bottleneckCount: 0 });
@@ -88,6 +86,16 @@ export default function TrafficDashboard() {
         let bCount = 0;
 
         setStatus(`Optimization Complete`);
+        
+        // SAVE LIVE MATH DATA TO SESSION STORAGE FOR THE-MATH PAGE
+        sessionStorage.setItem('liveMathData', JSON.stringify({
+          matrix: matrix,
+          bVector: inflows,
+          xVector: data.optimized_flows,
+          nodeLabels: nodes.map(n => n.data.label),
+          edgeLabels: edges.map(e => `${e.source}→${e.target}`)
+        }));
+
         setEdges((eds) => eds.map((edge, index) => {
           const flow = Math.abs(data.optimized_flows[index] || 0); 
           const isBottleneck = flow >= capacityThreshold;
@@ -117,7 +125,6 @@ export default function TrafficDashboard() {
   };
 
   const loadConnaughtPlacePreset = () => {
-    // Hard locked nodes to prevent dragging
     const cpNodes = [
       { id: 'cp-center', position: { x: 400, y: 300 }, data: { label: 'Rajiv Chowk (Hub)' }, className: defaultNodeStyle, draggable: false, selectable: false },
       { id: 'cp-north', position: { x: 400, y: 100 }, data: { label: 'Minto Rd (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
@@ -154,10 +161,9 @@ export default function TrafficDashboard() {
   return (
     <div className="flex h-screen w-full bg-slate-50 text-slate-800 font-sans overflow-hidden">
       
-      {/* Sidebar Command Center */}
       <div className="w-80 bg-white border-r border-slate-200 flex flex-col z-10 shadow-sm">
         
-        {/* UPDATED HEADER WITH LINK TO /THE-MATH */}
+        {/* REVERTED HEADER - No link here anymore */}
         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
@@ -165,9 +171,6 @@ export default function TrafficDashboard() {
             </h1>
             <p className="text-xs text-slate-500 mt-1 font-medium tracking-wide">Math Engine Dashboard</p>
           </div>
-          <Link href="/the-math" className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md border border-blue-100 transition-colors shadow-sm">
-            View Math &rarr;
-          </Link>
         </div>
         
         <div className="p-6 flex-1 flex flex-col gap-5 overflow-y-auto">
@@ -252,7 +255,6 @@ export default function TrafficDashboard() {
         </div>
       </div>
       
-      {/* React Flow Canvas */}
       <div className="flex-1 relative">
         <ReactFlow 
           nodes={nodes} 
@@ -270,9 +272,8 @@ export default function TrafficDashboard() {
           <Controls className="bg-white border-slate-200 fill-slate-600 shadow-sm" showInteractive={false} />
         </ReactFlow>
 
-        {/* Analysis Drawer */}
-        <div className={`absolute top-0 right-0 h-full w-80 bg-white border-l border-slate-200 shadow-xl transform transition-transform duration-300 ease-in-out ${showAnalysis ? 'translate-x-0' : 'translate-x-full'}`}>
-          <div className="p-6">
+        <div className={`absolute top-0 right-0 h-full w-80 bg-white border-l border-slate-200 shadow-xl transform transition-transform duration-300 ease-in-out flex flex-col ${showAnalysis ? 'translate-x-0' : 'translate-x-full'}`}>
+          <div className="p-6 flex-1">
             <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
               <h2 className="text-sm font-bold text-slate-800 tracking-wide">Analysis Results</h2>
               <button onClick={() => setShowAnalysis(false)} className="text-slate-400 hover:text-slate-600 font-bold">✕</button>
@@ -295,14 +296,19 @@ export default function TrafficDashboard() {
                   {metrics.bottleneckCount}
                 </p>
               </div>
-
-              <div className="pt-4 border-t border-slate-100">
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Engine utilized least-squares solver to balance Ax = b across {edges.length} active vectors.
-                </p>
-              </div>
             </div>
           </div>
+          
+          {/* NEW BUTTON LOCATION: Only visible after processing */}
+          <div className="p-6 border-t border-slate-100 bg-slate-50">
+            <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+              Engine utilized least-squares solver to balance Ax = b across active vectors.
+            </p>
+            <Link href="/the-math" className="w-full block text-center bg-slate-800 text-white font-medium text-sm py-2.5 px-4 rounded-md hover:bg-slate-900 transition-colors shadow-sm">
+              View Live Math Breakdown &rarr;
+            </Link>
+          </div>
+
         </div>
       </div>
     </div>
