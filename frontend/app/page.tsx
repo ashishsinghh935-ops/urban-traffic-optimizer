@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback } from 'react';
+import Link from 'next/link';
 import ReactFlow, { Background, Controls, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge, Connection } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -116,7 +117,7 @@ export default function TrafficDashboard() {
   };
 
   const loadConnaughtPlacePreset = () => {
-    // Added draggable: false and selectable: false directly to nodes to force a hard lock
+    // Hard locked nodes to prevent dragging
     const cpNodes = [
       { id: 'cp-center', position: { x: 400, y: 300 }, data: { label: 'Rajiv Chowk (Hub)' }, className: defaultNodeStyle, draggable: false, selectable: false },
       { id: 'cp-north', position: { x: 400, y: 100 }, data: { label: 'Minto Rd (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
@@ -143,7 +144,6 @@ export default function TrafficDashboard() {
   };
 
   const resetToCustom = () => {
-    // Reset nodes to be interactable again by spreading and removing custom overrides if any
     const unlockedNodes = initialNodes.map(node => ({ ...node, draggable: true, selectable: true }));
     setNodes(unlockedNodes);
     setEdges(initialEdges);
@@ -156,11 +156,18 @@ export default function TrafficDashboard() {
       
       {/* Sidebar Command Center */}
       <div className="w-80 bg-white border-r border-slate-200 flex flex-col z-10 shadow-sm">
-        <div className="p-6 border-b border-slate-100">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-            FlowOptimizer
-          </h1>
-          <p className="text-xs text-slate-500 mt-1 font-medium tracking-wide">Math Engine Dashboard</p>
+        
+        {/* UPDATED HEADER WITH LINK TO /THE-MATH */}
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              FlowOptimizer
+            </h1>
+            <p className="text-xs text-slate-500 mt-1 font-medium tracking-wide">Math Engine Dashboard</p>
+          </div>
+          <Link href="/the-math" className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-md border border-blue-100 transition-colors shadow-sm">
+            View Math &rarr;
+          </Link>
         </div>
         
         <div className="p-6 flex-1 flex flex-col gap-5 overflow-y-auto">
@@ -250,7 +257,6 @@ export default function TrafficDashboard() {
         <ReactFlow 
           nodes={nodes} 
           edges={edges} 
-          // Undefining the change handlers entirely when locked prevents ANY movement data from processing
           onNodesChange={isLocked ? undefined : onNodesChange} 
           onEdgesChange={isLocked ? undefined : onEdgesChange} 
           onConnect={onConnect} 
