@@ -46,7 +46,6 @@ export default function TrafficDashboard() {
     setEdges((eds) => addEdge(newEdge, eds));
   }, []);
 
-  // Listen for preset selection from the Gallery Page
   useEffect(() => {
     const pendingPreset = sessionStorage.getItem('pendingPreset');
     if (pendingPreset) {
@@ -132,8 +131,22 @@ export default function TrafficDashboard() {
     });
 
     const inflows = Array(nodes.length).fill(0);
-    inflows[0] = inflowA;
-    inflows[nodes.length - 1] = -outflowD;
+    
+    // UPDATED MATHEMATICAL ROUTING: Ensure exact preset nodes are targeted
+    if (activePresetName.includes("Connaught Place")) {
+      const inNode = nodes.findIndex(n => n.id === 'cp-north');
+      const outNode = nodes.findIndex(n => n.id === 'cp-south');
+      if (inNode !== -1) inflows[inNode] = inflowA;
+      if (outNode !== -1) inflows[outNode] = -outflowD;
+    } else if (activePresetName.includes("DU North Campus")) {
+      const inNode = nodes.findIndex(n => n.id === 'du-metro');
+      const outNode = nodes.findIndex(n => n.id === 'du-hansraj');
+      if (inNode !== -1) inflows[inNode] = inflowA;
+      if (outNode !== -1) inflows[outNode] = -outflowD;
+    } else {
+      inflows[0] = inflowA;
+      inflows[nodes.length - 1] = -outflowD;
+    }
 
     try {
       const response = await fetch('https://urban-traffic-optimizer.onrender.com/optimize', {
@@ -331,9 +344,13 @@ export default function TrafficDashboard() {
             <p className="text-xs text-slate-500 mb-3 leading-relaxed">
               Engine utilized least-squares solver to balance Ax = b across active vectors.
             </p>
-            <Link href="/the-math" className="w-full block text-center bg-slate-800 text-white font-medium text-sm py-2.5 px-4 rounded-md hover:bg-slate-900 transition-colors shadow-sm">
+            {/* UPDATED BUTTON: Forces a hard browser page load to bypass Next.js caching */}
+            <button 
+              onClick={() => window.location.href = '/the-math'}
+              className="w-full block text-center bg-slate-800 text-white font-medium text-sm py-2.5 px-4 rounded-md hover:bg-slate-900 transition-colors shadow-sm"
+            >
               View Live Math Breakdown &rarr;
-            </Link>
+            </button>
           </div>
         </div>
       </div>
