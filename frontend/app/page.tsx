@@ -71,28 +71,50 @@ export default function TrafficDashboard() {
     if (presetId === 'cp') {
       setActivePresetName("Connaught Place (Locked)");
       setIsLocked(true);
+      // Massive 11-node authentic concentric grid for CP
       setNodes([
-        { id: 'cp-center', position: { x: 400, y: 300 }, data: { label: 'Rajiv Chowk (Hub)' }, className: defaultNodeStyle, draggable: false, selectable: false },
-        { id: 'cp-north', position: { x: 400, y: 100 }, data: { label: 'Minto Rd (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
-        { id: 'cp-east', position: { x: 600, y: 300 }, data: { label: 'Barakhamba (Rad)' }, className: defaultNodeStyle, draggable: false, selectable: false },
-        { id: 'cp-south', position: { x: 400, y: 500 }, data: { label: 'Janpath (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
-        { id: 'cp-west', position: { x: 200, y: 300 }, data: { label: 'Sansad Marg (Rad)' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-in', position: { x: 500, y: 50 }, data: { label: 'Minto Rd (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-oc-ne', position: { x: 800, y: 200 }, data: { label: 'Barakhamba Rd' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-oc-se', position: { x: 800, y: 500 }, data: { label: 'K.G. Marg' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-out', position: { x: 500, y: 650 }, data: { label: 'Janpath (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-oc-sw', position: { x: 200, y: 500 }, data: { label: 'Sansad Marg' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-oc-nw', position: { x: 200, y: 200 }, data: { label: 'Panchkuian Rd' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-ic-n', position: { x: 500, y: 200 }, data: { label: 'Inner Circle (N)' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-ic-e', position: { x: 650, y: 350 }, data: { label: 'Inner Circle (E)' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-ic-s', position: { x: 500, y: 500 }, data: { label: 'Inner Circle (S)' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-ic-w', position: { x: 350, y: 350 }, data: { label: 'Inner Circle (W)' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-center', position: { x: 500, y: 350 }, data: { label: 'Rajiv Chowk Station' }, className: defaultNodeStyle, draggable: false, selectable: false },
       ]);
       setEdges([
-        { id: 'e-n-e', source: 'cp-north', target: 'cp-east', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-e-s', source: 'cp-east', target: 'cp-south', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-s-w', source: 'cp-south', target: 'cp-west', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-w-n', source: 'cp-west', target: 'cp-north', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-n-c', source: 'cp-north', target: 'cp-center', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-c-s', source: 'cp-center', target: 'cp-south', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-w-c', source: 'cp-west', target: 'cp-center', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-c-e', source: 'cp-center', target: 'cp-east', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        // Outer Ring
+        { id: 'e-in-nw', source: 'cp-in', target: 'cp-oc-nw', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-nw-sw', source: 'cp-oc-nw', target: 'cp-oc-sw', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-sw-out', source: 'cp-oc-sw', target: 'cp-out', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-out-se', source: 'cp-out', target: 'cp-oc-se', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-se-ne', source: 'cp-oc-se', target: 'cp-oc-ne', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-ne-in', source: 'cp-oc-ne', target: 'cp-in', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        // Inner Ring
+        { id: 'e-ic-n-e', source: 'cp-ic-n', target: 'cp-ic-e', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-ic-e-s', source: 'cp-ic-e', target: 'cp-ic-s', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-ic-s-w', source: 'cp-ic-s', target: 'cp-ic-w', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-ic-w-n', source: 'cp-ic-w', target: 'cp-ic-n', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        // Radials In/Out
+        { id: 'e-r-in', source: 'cp-in', target: 'cp-ic-n', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-r-ne', source: 'cp-oc-ne', target: 'cp-ic-e', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-r-out', source: 'cp-ic-s', target: 'cp-out', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-r-sw', source: 'cp-oc-sw', target: 'cp-ic-w', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-r-nw', source: 'cp-ic-w', target: 'cp-oc-nw', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-r-se', source: 'cp-ic-e', target: 'cp-oc-se', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        // Center Cross
+        { id: 'e-c-n', source: 'cp-ic-n', target: 'cp-center', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-c-s', source: 'cp-center', target: 'cp-ic-s', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-c-w', source: 'cp-ic-w', target: 'cp-center', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-c-e', source: 'cp-center', target: 'cp-ic-e', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
       ]);
     } 
     else if (presetId === 'du-north') {
       setActivePresetName("DU North Campus (Locked)");
       setIsLocked(true);
-      // Realistic 9-node structural topography of North Campus
       setNodes([
         { id: 'du-metro', position: { x: 500, y: 50 }, data: { label: 'Vishwavidyalaya Metro (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
         { id: 'du-khalsa', position: { x: 300, y: 150 }, data: { label: 'GTB Rd / SGTB Khalsa' }, className: defaultNodeStyle, draggable: false, selectable: false },
@@ -145,12 +167,11 @@ export default function TrafficDashboard() {
     const inflows = Array(nodes.length).fill(0);
     
     if (activePresetName.includes("Connaught Place")) {
-      const inNode = nodes.findIndex(n => n.id === 'cp-north');
-      const outNode = nodes.findIndex(n => n.id === 'cp-south');
+      const inNode = nodes.findIndex(n => n.id === 'cp-in');
+      const outNode = nodes.findIndex(n => n.id === 'cp-out');
       if (inNode !== -1) inflows[inNode] = inflowA;
       if (outNode !== -1) inflows[outNode] = -outflowD;
     } else if (activePresetName.includes("DU North Campus")) {
-      // Pointing the boundary constraints to the real start and end intersections
       const inNode = nodes.findIndex(n => n.id === 'du-metro');
       const outNode = nodes.findIndex(n => n.id === 'du-malka');
       if (inNode !== -1) inflows[inNode] = inflowA;
