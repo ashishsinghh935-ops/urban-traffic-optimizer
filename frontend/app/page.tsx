@@ -84,19 +84,9 @@ export default function TrafficDashboard() {
         let total = 0;
         let max = 0;
         let bCount = 0;
-
-        setStatus(`Optimization Complete`);
         
-        // SAVE LIVE MATH DATA TO SESSION STORAGE FOR THE-MATH PAGE
-        sessionStorage.setItem('liveMathData', JSON.stringify({
-          matrix: matrix,
-          bVector: inflows,
-          xVector: data.optimized_flows,
-          nodeLabels: nodes.map(n => n.data.label),
-          edgeLabels: edges.map(e => `${e.source}→${e.target}`)
-        }));
-
-        setEdges((eds) => eds.map((edge, index) => {
+        // Map flows to edges for the UI
+        const updatedEdges = edges.map((edge, index) => {
           const flow = Math.abs(data.optimized_flows[index] || 0); 
           const isBottleneck = flow >= capacityThreshold;
           
@@ -114,10 +104,26 @@ export default function TrafficDashboard() {
               strokeWidth: isBottleneck ? 3 : 2 
             }
           };
-        }));
+        });
 
+        setStatus(`Optimization Complete`);
+        setEdges(updatedEdges);
         setMetrics({ totalFlow: total, maxFlow: max, bottleneckCount: bCount });
         setShowAnalysis(true);
+        
+        // Helper to grab real names for the math page
+        const getNodeLabel = (id: string) => nodes.find(n => n.id === id)?.data.label || id;
+
+        // Save data to session storage (passing the FULL edges array so the mini-map works)
+        sessionStorage.setItem('liveMathData', JSON.stringify({
+          matrix: matrix,
+          bVector: inflows,
+          xVector: data.optimized_flows,
+          nodeLabels: nodes.map(n => n.data.label),
+          edgeLabels: edges.map(e => `${getNodeLabel(e.source)} → ${getNodeLabel(e.target)}`),
+          nodes: nodes,
+          edges: updatedEdges // Pass the colored/labeled edges!
+        }));
       }
     } catch (error) {
       setStatus("Error: Connection Failed");
@@ -162,8 +168,6 @@ export default function TrafficDashboard() {
     <div className="flex h-screen w-full bg-slate-50 text-slate-800 font-sans overflow-hidden">
       
       <div className="w-80 bg-white border-r border-slate-200 flex flex-col z-10 shadow-sm">
-        
-        {/* REVERTED HEADER - No link here anymore */}
         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
@@ -299,7 +303,6 @@ export default function TrafficDashboard() {
             </div>
           </div>
           
-          {/* NEW BUTTON LOCATION: Only visible after processing */}
           <div className="p-6 border-t border-slate-100 bg-slate-50">
             <p className="text-xs text-slate-500 mb-3 leading-relaxed">
               Engine utilized least-squares solver to balance Ax = b across active vectors.
