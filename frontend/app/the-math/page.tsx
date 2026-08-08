@@ -1,189 +1,344 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
-import ReactFlow, { Background } from 'reactflow';
+import { useRouter } from 'next/navigation';
+import ReactFlow, { Background, Controls, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge, Connection } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-interface MathState {
-  matrix: number[][];
-  bVector: number[];
-  xVector: number[];
-  nodeLabels: string[];
-  edgeLabels: string[];
-  nodes: any[];
-  edges: any[];
-}
+const defaultNodeStyle = 'bg-white border-2 border-slate-200 rounded-lg shadow-sm text-slate-700 font-semibold px-4 py-2 text-sm';
+const inflowNodeStyle = 'bg-blue-50 border-2 border-blue-400 rounded-lg shadow-sm text-blue-900 font-semibold px-4 py-2 text-sm';
+const outflowNodeStyle = 'bg-indigo-50 border-2 border-indigo-400 rounded-lg shadow-sm text-indigo-900 font-semibold px-4 py-2 text-sm';
 
-export default function TheMath() {
-  const [data, setData] = useState<MathState | null>(null);
+const customInitialNodes: Node[] = [
+  { id: 'A', position: { x: 150, y: 100 }, data: { label: 'Node A (Inflow)' }, className: inflowNodeStyle },
+  { id: 'B', position: { x: 450, y: 100 }, data: { label: 'Node B' }, className: defaultNodeStyle },
+  { id: 'C', position: { x: 150, y: 300 }, data: { label: 'Node C' }, className: defaultNodeStyle },
+  { id: 'D', position: { x: 450, y: 300 }, data: { label: 'Node D (Outflow)' }, className: outflowNodeStyle },
+];
 
+const customInitialEdges: Edge[] = [
+  { id: 'eA-B', source: 'A', target: 'B', animated: true, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+  { id: 'eA-C', source: 'A', target: 'C', animated: true, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+  { id: 'eB-D', source: 'B', target: 'D', animated: true, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+  { id: 'eC-D', source: 'C', target: 'D', animated: true, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+];
+
+export default function TrafficDashboard() {
+  const router = useRouter();
+  const [nodes, setNodes] = useState<Node[]>(customInitialNodes);
+  const [edges, setEdges] = useState<Edge[]>(customInitialEdges);
+  const [status, setStatus] = useState("System Standby");
+  const [inflowA, setInflowA] = useState(100);
+  const [outflowD, setOutflowD] = useState(100);
+  const [capacityThreshold, setCapacityThreshold] = useState(80);
+  
+  const [isLocked, setIsLocked] = useState(false);
+  const [activePresetName, setActivePresetName] = useState("Custom Network");
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  const [metrics, setMetrics] = useState({ totalFlow: 0, maxFlow: 0, bottleneckCount: 0 });
+
+  const onNodesChange = useCallback((changes: any) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
+  const onEdgesChange = useCallback((changes: any) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
+  
+  const onConnect = useCallback((params: Connection) => {
+    const newEdge = { ...params, id: `e${params.source}-${params.target}`, animated: true, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } };
+    setEdges((eds) => addEdge(newEdge, eds));
+  }, []);
+
+  // Listen for preset selection from the Gallery Page
   useEffect(() => {
-    const storedData = sessionStorage.getItem('liveMathData');
-    if (storedData) {
-      setData(JSON.parse(storedData));
+    const pendingPreset = sessionStorage.getItem('pendingPreset');
+    if (pendingPreset) {
+      loadPreset(pendingPreset);
+      sessionStorage.removeItem('pendingPreset'); // Clear it so it doesn't trigger on reload
     }
   }, []);
 
-  if (!data) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-8 text-center">
-        <h1 className="text-2xl font-bold text-slate-800 mb-4">No Network Data Found</h1>
-        <p className="text-slate-600 mb-6">You need to run the Math Engine on the dashboard first so we have data to analyze!</p>
-        <Link href="/" className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
-          Return to Dashboard
-        </Link>
-      </div>
-    );
-  }
+  const handleAddIntersection = () => {
+    const nextId = String.fromCharCode(65 + nodes.length);
+    const newNode = {
+      id: nextId,
+      position: { x: Math.random() * 200 + 250, y: Math.random() * 200 + 150 },
+      data: { label: `Node ${nextId}` },
+      className: defaultNodeStyle
+    };
+    setNodes((nds) => [...nds, newNode]);
+  };
+
+  const loadPreset = (presetId: string) => {
+    setShowAnalysis(false);
+
+    if (presetId === 'cp') {
+      setActivePresetName("Connaught Place (Locked)");
+      setIsLocked(true);
+      setNodes([
+        { id: 'cp-center', position: { x: 400, y: 300 }, data: { label: 'Rajiv Chowk (Hub)' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-north', position: { x: 400, y: 100 }, data: { label: 'Minto Rd (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-east', position: { x: 600, y: 300 }, data: { label: 'Barakhamba (Rad)' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-south', position: { x: 400, y: 500 }, data: { label: 'Janpath (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-west', position: { x: 200, y: 300 }, data: { label: 'Sansad Marg (Rad)' }, className: defaultNodeStyle, draggable: false, selectable: false },
+      ]);
+      setEdges([
+        { id: 'e-n-e', source: 'cp-north', target: 'cp-east', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-e-s', source: 'cp-east', target: 'cp-south', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-s-w', source: 'cp-south', target: 'cp-west', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-w-n', source: 'cp-west', target: 'cp-north', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-n-c', source: 'cp-north', target: 'cp-center', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-c-s', source: 'cp-center', target: 'cp-south', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-w-c', source: 'cp-west', target: 'cp-center', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-c-e', source: 'cp-center', target: 'cp-east', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+      ]);
+    } 
+    else if (presetId === 'du-north') {
+      setActivePresetName("DU North Campus (Locked)");
+      setIsLocked(true);
+      setNodes([
+        { id: 'du-metro', position: { x: 400, y: 50 }, data: { label: 'Vishwavidyalaya Metro (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
+        { id: 'du-khalsa', position: { x: 200, y: 200 }, data: { label: 'SGTB Khalsa College' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'du-arts', position: { x: 600, y: 200 }, data: { label: 'Arts Faculty (Hub)' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'du-srcc', position: { x: 300, y: 400 }, data: { label: 'SRCC' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'du-hansraj', position: { x: 500, y: 550 }, data: { label: 'Hansraj College (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
+      ]);
+      setEdges([
+        { id: 'e-m-k', source: 'du-metro', target: 'du-khalsa', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-m-a', source: 'du-metro', target: 'du-arts', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-k-s', source: 'du-khalsa', target: 'du-srcc', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-a-s', source: 'du-arts', target: 'du-srcc', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-a-h', source: 'du-arts', target: 'du-hansraj', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-s-h', source: 'du-srcc', target: 'du-hansraj', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+      ]);
+    }
+    else {
+      // Custom
+      setActivePresetName("Custom Network");
+      setIsLocked(false);
+      const unlockedNodes = customInitialNodes.map(node => ({ ...node, draggable: true, selectable: true }));
+      setNodes(unlockedNodes);
+      setEdges(customInitialEdges);
+    }
+  };
+
+  const handleOptimize = async () => {
+    if (edges.length === 0) return setStatus("Error: No topology found");
+    setStatus("Computing Matrix...");
+
+    const matrix: number[][] = Array(nodes.length).fill(0).map(() => Array(edges.length).fill(0));
+    
+    edges.forEach((edge, edgeIndex) => {
+      const sourceIndex = nodes.findIndex(n => n.id === edge.source);
+      const targetIndex = nodes.findIndex(n => n.id === edge.target);
+      if (sourceIndex !== -1) matrix[sourceIndex][edgeIndex] = 1;
+      if (targetIndex !== -1) matrix[targetIndex][edgeIndex] = -1;
+    });
+
+    const inflows = Array(nodes.length).fill(0);
+    // Dynamic array assignment based on in/out nodes
+    inflows[0] = inflowA;
+    inflows[nodes.length - 1] = -outflowD;
+
+    try {
+      const response = await fetch('https://urban-traffic-optimizer.onrender.com/optimize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ incidence_matrix: matrix, external_inflows: inflows })
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === "success") {
+        let total = 0;
+        let max = 0;
+        let bCount = 0;
+        
+        const updatedEdges = edges.map((edge, index) => {
+          const flow = Math.abs(data.optimized_flows[index] || 0); 
+          const isBottleneck = flow >= capacityThreshold;
+          
+          total += flow;
+          if (flow > max) max = flow;
+          if (isBottleneck) bCount++;
+
+          return {
+            ...edge,
+            label: `${flow} units/hr`,
+            labelStyle: { fill: '#334155', fontWeight: 600 },
+            labelBgStyle: { fill: '#ffffff', fillOpacity: 0.8 },
+            style: { 
+              stroke: isBottleneck ? '#ef4444' : '#10b981', 
+              strokeWidth: isBottleneck ? 3 : 2 
+            }
+          };
+        });
+
+        setStatus(`Optimization Complete`);
+        setEdges(updatedEdges);
+        setMetrics({ totalFlow: total, maxFlow: max, bottleneckCount: bCount });
+        setShowAnalysis(true);
+        
+        const getNodeLabel = (id: string) => nodes.find(n => n.id === id)?.data.label || id;
+
+        sessionStorage.setItem('liveMathData', JSON.stringify({
+          matrix: matrix,
+          bVector: inflows,
+          xVector: data.optimized_flows,
+          nodeLabels: nodes.map(n => n.data.label),
+          edgeLabels: edges.map(e => `${getNodeLabel(e.source)} → ${getNodeLabel(e.target)}`),
+          nodes: nodes,
+          edges: updatedEdges 
+        }));
+      }
+    } catch (error) {
+      setStatus("Error: Connection Failed");
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-8 md:p-16">
-      <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="flex h-screen w-full bg-slate-50 text-slate-800 font-sans overflow-hidden">
+      
+      <div className="w-80 bg-white border-r border-slate-200 flex flex-col z-10 shadow-sm">
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              FlowOptimizer
+            </h1>
+            <p className="text-xs text-slate-500 mt-1 font-medium tracking-wide">Math Engine Dashboard</p>
+          </div>
+        </div>
         
-        {/* Header */}
-        <div className="p-8 border-b border-slate-100 bg-slate-800 text-white">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-3xl font-bold tracking-tight">Live Matrix Analysis</h1>
-            <Link href="/" className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors">
-              &larr; Back to Dashboard
+        <div className="p-6 flex-1 flex flex-col gap-5 overflow-y-auto">
+          
+          {/* Active Preset Indicator */}
+          <div className="bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 flex items-center justify-between">
+             <span className="text-xs font-semibold text-slate-500 uppercase">Topology</span>
+             <span className="text-xs font-bold text-slate-800">{activePresetName}</span>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Inflow Volume</label>
+            <input 
+              type="number" 
+              value={inflowA} 
+              onChange={(e) => setInflowA(Number(e.target.value))} 
+              className="w-full bg-white border border-slate-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-slate-800" 
+            />
+          </div>
+          
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Outflow Volume</label>
+            <input 
+              type="number" 
+              value={outflowD} 
+              onChange={(e) => setOutflowD(Number(e.target.value))} 
+              className="w-full bg-white border border-slate-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-slate-800" 
+            />
+          </div>
+
+          <div className="flex flex-col gap-3 pt-2">
+            <div className="flex justify-between items-center text-xs font-bold text-slate-600 uppercase tracking-wide">
+              <span>Bottleneck Limit</span>
+              <span className="text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded">{capacityThreshold} units</span>
+            </div>
+            <input 
+              type="range" 
+              min="10" 
+              max="200" 
+              value={capacityThreshold} 
+              onChange={(e) => setCapacityThreshold(Number(e.target.value))} 
+              className="w-full accent-blue-600 cursor-pointer h-1.5 bg-slate-200 appearance-none rounded-lg"
+            />
+          </div>
+
+          <hr className="border-slate-100 my-2" />
+
+          {!isLocked && (
+            <button 
+              onClick={handleAddIntersection} 
+              className="w-full bg-white text-slate-700 px-4 py-2.5 rounded-md hover:bg-slate-50 transition-colors font-medium text-sm border border-slate-200 shadow-sm"
+            >
+              + Add New Intersection
+            </button>
+          )}
+
+          <button 
+            onClick={handleOptimize} 
+            className="w-full bg-blue-600 text-white px-4 py-2.5 rounded-md hover:bg-blue-700 transition-colors font-semibold text-sm shadow-sm mt-1"
+          >
+            Run Math Engine
+          </button>
+
+          {/* NEW PRESET GALLERY BUTTON */}
+          <div className="mt-2 border-t border-slate-100 pt-4">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">
+              Network Library
+            </h3>
+            <Link 
+              href="/presets"
+              className="w-full flex items-center justify-center gap-2 bg-slate-800 text-white font-medium text-sm py-2.5 px-4 rounded-md hover:bg-slate-900 transition-colors shadow-sm"
+            >
+              Browse Topologies &rarr;
             </Link>
           </div>
-          <p className="text-slate-300 text-sm leading-relaxed max-w-3xl">
-            Below is the mathematical breakdown of the specific network topography and volumes you just submitted. 
-            The engine uses the principles of vector spaces and linear optimization to conserve traffic flow across the grid.
-          </p>
+
+          <div className="mt-auto p-3 bg-slate-50 rounded-md border border-slate-200 text-xs shadow-inner">
+            <span className="block font-semibold text-slate-700 mb-1">System Status:</span> 
+            <span className={status.includes('Error') ? 'text-red-600' : 'text-blue-600'}>{status}</span>
+          </div>
         </div>
+      </div>
+      
+      <div className="flex-1 relative">
+        <ReactFlow 
+          nodes={nodes} 
+          edges={edges} 
+          onNodesChange={isLocked ? undefined : onNodesChange} 
+          onEdgesChange={isLocked ? undefined : onEdgesChange} 
+          onConnect={onConnect} 
+          nodesDraggable={!isLocked}
+          nodesConnectable={!isLocked}
+          elementsSelectable={!isLocked}
+          fitView
+          className="bg-slate-50"
+        >
+          <Background color="#cbd5e1" gap={20} size={1} />
+          <Controls className="bg-white border-slate-200 fill-slate-600 shadow-sm" showInteractive={false} />
+        </ReactFlow>
 
-        {/* Content */}
-        <div className="p-8 space-y-12">
+        <div className={`absolute top-0 right-0 h-full w-80 bg-white border-l border-slate-200 shadow-xl transform transition-transform duration-300 ease-in-out flex flex-col ${showAnalysis ? 'translate-x-0' : 'translate-x-full'}`}>
+          <div className="p-6 flex-1">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
+              <h2 className="text-sm font-bold text-slate-800 tracking-wide">Analysis Results</h2>
+              <button onClick={() => setShowAnalysis(false)} className="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+            </div>
+            
+            <div className="space-y-6">
+              <div>
+                <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">Total Network Load</p>
+                <p className="text-3xl text-slate-800 font-light">{metrics.totalFlow} <span className="text-sm text-slate-500 font-normal">units/hr</span></p>
+              </div>
+              
+              <div>
+                <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">Peak Bottleneck Volume</p>
+                <p className="text-3xl text-blue-600 font-light">{metrics.maxFlow} <span className="text-sm text-slate-500 font-normal">units/hr</span></p>
+              </div>
+
+              <div>
+                <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">Active Stress Points</p>
+                <p className={`text-3xl font-light ${metrics.bottleneckCount > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                  {metrics.bottleneckCount}
+                </p>
+              </div>
+            </div>
+          </div>
           
-          {/* NEW: Mini Map Visualization */}
-          <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-4 border-b border-slate-100 pb-2">Your Network Topography</h2>
-            <p className="text-slate-600 mb-4 text-sm leading-relaxed">
-              This is the network graph that was sent to the backend. The math engine must calculate the exact flow for every single connecting line (edge) to prevent gridlock.
+          <div className="p-6 border-t border-slate-100 bg-slate-50">
+            <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+              Engine utilized least-squares solver to balance Ax = b across active vectors.
             </p>
-            <div className="h-72 w-full border border-slate-200 rounded-xl overflow-hidden bg-slate-50 relative shadow-inner">
-              <ReactFlow 
-                nodes={data.nodes} 
-                edges={data.edges} 
-                fitView 
-                nodesDraggable={false} 
-                nodesConnectable={false} 
-                elementsSelectable={false}
-              >
-                <Background color="#cbd5e1" gap={20} size={1} />
-              </ReactFlow>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-4 border-b border-slate-100 pb-2">1. The Incidence Matrix (A)</h2>
-            <p className="text-slate-600 mb-4 text-sm leading-relaxed">
-              To solve the network, the graph is mathematically flattened into an <strong>Incidence Matrix</strong>. 
-              Rows represent your {data.nodeLabels.length} intersections, and columns represent your {data.edgeLabels.length} roads. 
-            </p>
-            <ul className="list-disc list-inside text-sm text-slate-600 space-y-2 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-100">
-              <li><strong className="text-blue-600">1</strong> means the road <strong>originates</strong> here (traffic leaves the intersection).</li>
-              <li><strong className="text-rose-600">-1</strong> means the road <strong>terminates</strong> here (traffic enters the intersection).</li>
-              <li><strong className="text-slate-400">0</strong> means the road and intersection are not connected.</li>
-            </ul>
-            
-            <div className="overflow-x-auto border border-slate-200 rounded-lg shadow-sm">
-              <table className="w-full text-xs text-center border-collapse bg-white whitespace-nowrap">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-                  <tr>
-                    <th className="p-3 border-r border-slate-200 text-left sticky left-0 bg-slate-50 z-10">Intersections \ Roads</th>
-                    {data.edgeLabels.map((label, idx) => {
-                      const [source, target] = label.split(' → ');
-                      return (
-                        <th key={idx} className="p-3 min-w-[120px] border-r border-slate-200">
-                          <div className="flex flex-col items-center">
-                            <span className="text-[10px] text-slate-400 uppercase">From:</span>
-                            <span className="truncate max-w-[100px]" title={source}>{source}</span>
-                            <span className="text-[10px] text-slate-400 uppercase mt-1">To:</span>
-                            <span className="truncate max-w-[100px]" title={target}>{target}</span>
-                          </div>
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.matrix.map((row, rIdx) => (
-                    <tr key={rIdx} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
-                      <td className="p-3 border-r border-slate-200 font-bold text-slate-700 text-left sticky left-0 bg-white z-10">
-                        {data.nodeLabels[rIdx]}
-                      </td>
-                      {row.map((val, cIdx) => (
-                        <td key={cIdx} className={`p-3 border-r border-slate-100 font-mono text-sm ${val === 1 ? 'text-blue-600 bg-blue-50/30 font-bold' : val === -1 ? 'text-rose-600 bg-rose-50/30 font-bold' : 'text-slate-300'}`}>
-                          {val}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-4 border-b border-slate-100 pb-2">2. Solving Ax = b</h2>
-            <p className="text-slate-600 mb-6 text-sm leading-relaxed">
-              We now have a linear system defined as <strong>Ax = b</strong>. 
-              The engine takes your <strong>Boundary Vector (b)</strong> (which dictates how many cars are entering or leaving the edges of your map) and computes the pseudo-inverse to find the optimized flow vector <strong>(x)</strong>. This guarantees that traffic volume is perfectly balanced without violating flow conservation.
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Vector b */}
-              <div>
-                <h3 className="text-sm font-bold text-rose-800 bg-rose-50 border border-rose-200 px-4 py-2 rounded-t-lg">
-                  Vector b (Boundary Inflows/Outflows)
-                </h3>
-                <div className="bg-white p-3 border border-t-0 border-rose-200 border-b-0 text-xs text-slate-500">
-                  Positive values = Traffic entering map. Negative values = Traffic exiting map. Zero = Internal intersection.
-                </div>
-                <div className="border border-t-0 border-rose-200 rounded-b-lg overflow-hidden">
-                  <table className="w-full text-sm text-center border-collapse">
-                    <tbody>
-                      {data.bVector.map((val, idx) => (
-                        <tr key={idx} className="border-b border-rose-100 last:border-0">
-                          <td className="p-3 border-r border-rose-100 bg-slate-50 w-1/2 text-left font-medium text-slate-600">{data.nodeLabels[idx]}</td>
-                          <td className="p-3 font-mono font-bold text-rose-700">{val}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Vector x */}
-              <div>
-                <h3 className="text-sm font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-t-lg">
-                  Vector x (Optimized Flow Result)
-                </h3>
-                <div className="bg-white p-3 border border-t-0 border-emerald-200 border-b-0 text-xs text-slate-500">
-                  The calculated traffic volume required on each road to prevent bottleneck failure.
-                </div>
-                <div className="border border-t-0 border-emerald-200 rounded-b-lg overflow-hidden">
-                  <table className="w-full text-sm text-center border-collapse">
-                    <tbody>
-                      {data.xVector.map((val, idx) => (
-                        <tr key={idx} className="border-b border-emerald-100 last:border-0 hover:bg-emerald-50/20">
-                          <td className="p-3 border-r border-emerald-100 bg-slate-50 w-2/3 text-left font-medium text-slate-600 truncate max-w-[200px]" title={data.edgeLabels[idx]}>
-                            {data.edgeLabels[idx]}
-                          </td>
-                          <td className="p-3 font-mono font-bold text-emerald-700">{Math.abs(Math.round(val))} units</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </section>
-
+            <Link href="/the-math" className="w-full block text-center bg-slate-800 text-white font-medium text-sm py-2.5 px-4 rounded-md hover:bg-slate-900 transition-colors shadow-sm">
+              View Live Math Breakdown &rarr;
+            </Link>
+          </div>
         </div>
       </div>
     </div>
