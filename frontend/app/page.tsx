@@ -132,7 +132,6 @@ export default function TrafficDashboard() {
 
     const inflows = Array(nodes.length).fill(0);
     
-    // UPDATED MATHEMATICAL ROUTING: Ensure exact preset nodes are targeted
     if (activePresetName.includes("Connaught Place")) {
       const inNode = nodes.findIndex(n => n.id === 'cp-north');
       const outNode = nodes.findIndex(n => n.id === 'cp-south');
@@ -344,13 +343,13 @@ export default function TrafficDashboard() {
             <p className="text-xs text-slate-500 mb-3 leading-relaxed">
               Engine utilized least-squares solver to balance Ax = b across active vectors.
             </p>
-            {/* UPDATED BUTTON: Forces a hard browser page load to bypass Next.js caching */}
-            <button 
-              onClick={() => window.location.href = '/the-math'}
+            {/* RESTORED NEXT.JS LINK COMPONENT FOR BULLETPROOF ROUTING */}
+            <Link 
+              href="/the-math"
               className="w-full block text-center bg-slate-800 text-white font-medium text-sm py-2.5 px-4 rounded-md hover:bg-slate-900 transition-colors shadow-sm"
             >
               View Live Math Breakdown &rarr;
-            </button>
+            </Link>
           </div>
         </div>
       </div>
