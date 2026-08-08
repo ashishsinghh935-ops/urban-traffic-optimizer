@@ -92,20 +92,32 @@ export default function TrafficDashboard() {
     else if (presetId === 'du-north') {
       setActivePresetName("DU North Campus (Locked)");
       setIsLocked(true);
+      // Realistic 9-node structural topography of North Campus
       setNodes([
-        { id: 'du-metro', position: { x: 400, y: 50 }, data: { label: 'Vishwavidyalaya Metro (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
-        { id: 'du-khalsa', position: { x: 200, y: 200 }, data: { label: 'SGTB Khalsa College' }, className: defaultNodeStyle, draggable: false, selectable: false },
-        { id: 'du-arts', position: { x: 600, y: 200 }, data: { label: 'Arts Faculty (Hub)' }, className: defaultNodeStyle, draggable: false, selectable: false },
-        { id: 'du-srcc', position: { x: 300, y: 400 }, data: { label: 'SRCC' }, className: defaultNodeStyle, draggable: false, selectable: false },
-        { id: 'du-hansraj', position: { x: 500, y: 550 }, data: { label: 'Hansraj College (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
+        { id: 'du-metro', position: { x: 500, y: 50 }, data: { label: 'Vishwavidyalaya Metro (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
+        { id: 'du-khalsa', position: { x: 300, y: 150 }, data: { label: 'GTB Rd / SGTB Khalsa' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'du-arts', position: { x: 700, y: 150 }, data: { label: 'Chatra Marg / Arts Faculty' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'du-patel', position: { x: 200, y: 300 }, data: { label: 'Patel Chest / SRCC' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'du-stephens', position: { x: 600, y: 300 }, data: { label: 'St. Stephen\'s / Hindu' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'du-cic', position: { x: 900, y: 300 }, data: { label: 'Cluster Innovation Centre' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'du-ramjas', position: { x: 400, y: 450 }, data: { label: 'Sudhir Bose Marg / Ramjas' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'du-kamla', position: { x: 800, y: 450 }, data: { label: 'Bungalow Rd / Kamla Nagar' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'du-malka', position: { x: 500, y: 600 }, data: { label: 'Malka Ganj Chowk (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
       ]);
       setEdges([
-        { id: 'e-m-k', source: 'du-metro', target: 'du-khalsa', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-m-a', source: 'du-metro', target: 'du-arts', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-k-s', source: 'du-khalsa', target: 'du-srcc', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-a-s', source: 'du-arts', target: 'du-srcc', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-a-h', source: 'du-arts', target: 'du-hansraj', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-s-h', source: 'du-srcc', target: 'du-hansraj', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-m-k', source: 'du-metro', target: 'du-khalsa', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-m-a', source: 'du-metro', target: 'du-arts', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-k-a', source: 'du-khalsa', target: 'du-arts', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-k-p', source: 'du-khalsa', target: 'du-patel', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-a-s', source: 'du-arts', target: 'du-stephens', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-a-c', source: 'du-arts', target: 'du-cic', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-p-r', source: 'du-patel', target: 'du-ramjas', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-p-m', source: 'du-patel', target: 'du-malka', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-s-r', source: 'du-stephens', target: 'du-ramjas', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-s-k', source: 'du-stephens', target: 'du-kamla', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-c-k', source: 'du-cic', target: 'du-kamla', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-r-m', source: 'du-ramjas', target: 'du-malka', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-k-m', source: 'du-kamla', target: 'du-malka', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
       ]);
     }
     else {
@@ -138,8 +150,9 @@ export default function TrafficDashboard() {
       if (inNode !== -1) inflows[inNode] = inflowA;
       if (outNode !== -1) inflows[outNode] = -outflowD;
     } else if (activePresetName.includes("DU North Campus")) {
+      // Pointing the boundary constraints to the real start and end intersections
       const inNode = nodes.findIndex(n => n.id === 'du-metro');
-      const outNode = nodes.findIndex(n => n.id === 'du-hansraj');
+      const outNode = nodes.findIndex(n => n.id === 'du-malka');
       if (inNode !== -1) inflows[inNode] = inflowA;
       if (outNode !== -1) inflows[outNode] = -outflowD;
     } else {
@@ -343,7 +356,6 @@ export default function TrafficDashboard() {
             <p className="text-xs text-slate-500 mb-3 leading-relaxed">
               Engine utilized least-squares solver to balance Ax = b across active vectors.
             </p>
-            {/* RESTORED NEXT.JS LINK COMPONENT FOR BULLETPROOF ROUTING */}
             <Link 
               href="/the-math"
               className="w-full block text-center bg-slate-800 text-white font-medium text-sm py-2.5 px-4 rounded-md hover:bg-slate-900 transition-colors shadow-sm"
