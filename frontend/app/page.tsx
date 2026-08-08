@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import ReactFlow, { Background, Controls, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge, Connection } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -9,14 +10,14 @@ const defaultNodeStyle = 'bg-white border-2 border-slate-200 rounded-lg shadow-s
 const inflowNodeStyle = 'bg-blue-50 border-2 border-blue-400 rounded-lg shadow-sm text-blue-900 font-semibold px-4 py-2 text-sm';
 const outflowNodeStyle = 'bg-indigo-50 border-2 border-indigo-400 rounded-lg shadow-sm text-indigo-900 font-semibold px-4 py-2 text-sm';
 
-const initialNodes: Node[] = [
+const customInitialNodes: Node[] = [
   { id: 'A', position: { x: 150, y: 100 }, data: { label: 'Node A (Inflow)' }, className: inflowNodeStyle },
   { id: 'B', position: { x: 450, y: 100 }, data: { label: 'Node B' }, className: defaultNodeStyle },
   { id: 'C', position: { x: 150, y: 300 }, data: { label: 'Node C' }, className: defaultNodeStyle },
   { id: 'D', position: { x: 450, y: 300 }, data: { label: 'Node D (Outflow)' }, className: outflowNodeStyle },
 ];
 
-const initialEdges: Edge[] = [
+const customInitialEdges: Edge[] = [
   { id: 'eA-B', source: 'A', target: 'B', animated: true, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } },
   { id: 'eA-C', source: 'A', target: 'C', animated: true, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } },
   { id: 'eB-D', source: 'B', target: 'D', animated: true, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } },
@@ -24,14 +25,16 @@ const initialEdges: Edge[] = [
 ];
 
 export default function TrafficDashboard() {
-  const [nodes, setNodes] = useState<Node[]>(initialNodes);
-  const [edges, setEdges] = useState<Edge[]>(initialEdges);
+  const router = useRouter();
+  const [nodes, setNodes] = useState<Node[]>(customInitialNodes);
+  const [edges, setEdges] = useState<Edge[]>(customInitialEdges);
   const [status, setStatus] = useState("System Standby");
   const [inflowA, setInflowA] = useState(100);
   const [outflowD, setOutflowD] = useState(100);
   const [capacityThreshold, setCapacityThreshold] = useState(80);
   
   const [isLocked, setIsLocked] = useState(false);
+  const [activePresetName, setActivePresetName] = useState("Custom Network");
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [metrics, setMetrics] = useState({ totalFlow: 0, maxFlow: 0, bottleneckCount: 0 });
 
@@ -43,6 +46,15 @@ export default function TrafficDashboard() {
     setEdges((eds) => addEdge(newEdge, eds));
   }, []);
 
+  // Listen for preset selection from the Gallery Page
+  useEffect(() => {
+    const pendingPreset = sessionStorage.getItem('pendingPreset');
+    if (pendingPreset) {
+      loadPreset(pendingPreset);
+      sessionStorage.removeItem('pendingPreset');
+    }
+  }, []);
+
   const handleAddIntersection = () => {
     const nextId = String.fromCharCode(65 + nodes.length);
     const newNode = {
@@ -52,6 +64,58 @@ export default function TrafficDashboard() {
       className: defaultNodeStyle
     };
     setNodes((nds) => [...nds, newNode]);
+  };
+
+  const loadPreset = (presetId: string) => {
+    setShowAnalysis(false);
+
+    if (presetId === 'cp') {
+      setActivePresetName("Connaught Place (Locked)");
+      setIsLocked(true);
+      setNodes([
+        { id: 'cp-center', position: { x: 400, y: 300 }, data: { label: 'Rajiv Chowk (Hub)' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-north', position: { x: 400, y: 100 }, data: { label: 'Minto Rd (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-east', position: { x: 600, y: 300 }, data: { label: 'Barakhamba (Rad)' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-south', position: { x: 400, y: 500 }, data: { label: 'Janpath (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-west', position: { x: 200, y: 300 }, data: { label: 'Sansad Marg (Rad)' }, className: defaultNodeStyle, draggable: false, selectable: false },
+      ]);
+      setEdges([
+        { id: 'e-n-e', source: 'cp-north', target: 'cp-east', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-e-s', source: 'cp-east', target: 'cp-south', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-s-w', source: 'cp-south', target: 'cp-west', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-w-n', source: 'cp-west', target: 'cp-north', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-n-c', source: 'cp-north', target: 'cp-center', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-c-s', source: 'cp-center', target: 'cp-south', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-w-c', source: 'cp-west', target: 'cp-center', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-c-e', source: 'cp-center', target: 'cp-east', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+      ]);
+    } 
+    else if (presetId === 'du-north') {
+      setActivePresetName("DU North Campus (Locked)");
+      setIsLocked(true);
+      setNodes([
+        { id: 'du-metro', position: { x: 400, y: 50 }, data: { label: 'Vishwavidyalaya Metro (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
+        { id: 'du-khalsa', position: { x: 200, y: 200 }, data: { label: 'SGTB Khalsa College' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'du-arts', position: { x: 600, y: 200 }, data: { label: 'Arts Faculty (Hub)' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'du-srcc', position: { x: 300, y: 400 }, data: { label: 'SRCC' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'du-hansraj', position: { x: 500, y: 550 }, data: { label: 'Hansraj College (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
+      ]);
+      setEdges([
+        { id: 'e-m-k', source: 'du-metro', target: 'du-khalsa', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-m-a', source: 'du-metro', target: 'du-arts', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-k-s', source: 'du-khalsa', target: 'du-srcc', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-a-s', source: 'du-arts', target: 'du-srcc', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-a-h', source: 'du-arts', target: 'du-hansraj', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-s-h', source: 'du-srcc', target: 'du-hansraj', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+      ]);
+    }
+    else {
+      setActivePresetName("Custom Network");
+      setIsLocked(false);
+      const unlockedNodes = customInitialNodes.map(node => ({ ...node, draggable: true, selectable: true }));
+      setNodes(unlockedNodes);
+      setEdges(customInitialEdges);
+    }
   };
 
   const handleOptimize = async () => {
@@ -85,7 +149,6 @@ export default function TrafficDashboard() {
         let max = 0;
         let bCount = 0;
         
-        // Map flows to edges for the UI
         const updatedEdges = edges.map((edge, index) => {
           const flow = Math.abs(data.optimized_flows[index] || 0); 
           const isBottleneck = flow >= capacityThreshold;
@@ -111,10 +174,8 @@ export default function TrafficDashboard() {
         setMetrics({ totalFlow: total, maxFlow: max, bottleneckCount: bCount });
         setShowAnalysis(true);
         
-        // Helper to grab real names for the math page
         const getNodeLabel = (id: string) => nodes.find(n => n.id === id)?.data.label || id;
 
-        // Save data to session storage (passing the FULL edges array so the mini-map works)
         sessionStorage.setItem('liveMathData', JSON.stringify({
           matrix: matrix,
           bVector: inflows,
@@ -122,7 +183,7 @@ export default function TrafficDashboard() {
           nodeLabels: nodes.map(n => n.data.label),
           edgeLabels: edges.map(e => `${getNodeLabel(e.source)} → ${getNodeLabel(e.target)}`),
           nodes: nodes,
-          edges: updatedEdges // Pass the colored/labeled edges!
+          edges: updatedEdges 
         }));
       }
     } catch (error) {
@@ -130,40 +191,6 @@ export default function TrafficDashboard() {
     }
   };
 
-  const loadConnaughtPlacePreset = () => {
-    const cpNodes = [
-      { id: 'cp-center', position: { x: 400, y: 300 }, data: { label: 'Rajiv Chowk (Hub)' }, className: defaultNodeStyle, draggable: false, selectable: false },
-      { id: 'cp-north', position: { x: 400, y: 100 }, data: { label: 'Minto Rd (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
-      { id: 'cp-east', position: { x: 600, y: 300 }, data: { label: 'Barakhamba (Rad)' }, className: defaultNodeStyle, draggable: false, selectable: false },
-      { id: 'cp-south', position: { x: 400, y: 500 }, data: { label: 'Janpath (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
-      { id: 'cp-west', position: { x: 200, y: 300 }, data: { label: 'Sansad Marg (Rad)' }, className: defaultNodeStyle, draggable: false, selectable: false },
-    ];
-
-    const cpEdges = [
-      { id: 'e-n-e', source: 'cp-north', target: 'cp-east', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-      { id: 'e-e-s', source: 'cp-east', target: 'cp-south', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-      { id: 'e-s-w', source: 'cp-south', target: 'cp-west', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-      { id: 'e-w-n', source: 'cp-west', target: 'cp-north', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-      { id: 'e-n-c', source: 'cp-north', target: 'cp-center', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-      { id: 'e-c-s', source: 'cp-center', target: 'cp-south', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-      { id: 'e-w-c', source: 'cp-west', target: 'cp-center', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-      { id: 'e-c-e', source: 'cp-center', target: 'cp-east', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-    ];
-
-    setNodes(cpNodes);
-    setEdges(cpEdges);
-    setIsLocked(true);
-    setShowAnalysis(false);
-  };
-
-  const resetToCustom = () => {
-    const unlockedNodes = initialNodes.map(node => ({ ...node, draggable: true, selectable: true }));
-    setNodes(unlockedNodes);
-    setEdges(initialEdges);
-    setIsLocked(false);
-    setShowAnalysis(false);
-  };
-  
   return (
     <div className="flex h-screen w-full bg-slate-50 text-slate-800 font-sans overflow-hidden">
       
@@ -178,6 +205,12 @@ export default function TrafficDashboard() {
         </div>
         
         <div className="p-6 flex-1 flex flex-col gap-5 overflow-y-auto">
+          
+          <div className="bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 flex items-center justify-between">
+             <span className="text-xs font-semibold text-slate-500 uppercase">Topology</span>
+             <span className="text-xs font-bold text-slate-800">{activePresetName}</span>
+          </div>
+
           <div className="flex flex-col gap-2">
             <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Inflow Volume</label>
             <input 
@@ -233,23 +266,14 @@ export default function TrafficDashboard() {
 
           <div className="mt-2 border-t border-slate-100 pt-4">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">
-              Real-World Presets
+              Network Library
             </h3>
-            {isLocked ? (
-              <button 
-                onClick={resetToCustom}
-                className="w-full bg-white text-slate-600 font-medium text-sm py-2 px-4 rounded-md hover:bg-slate-50 border border-slate-200 shadow-sm"
-              >
-                Unlock & Reset to Custom
-              </button>
-            ) : (
-              <button 
-                onClick={loadConnaughtPlacePreset}
-                className="w-full flex items-center justify-center gap-2 bg-slate-800 text-white font-medium text-sm py-2 px-4 rounded-md hover:bg-slate-900 transition-colors shadow-sm"
-              >
-                Load Connaught Place
-              </button>
-            )}
+            <Link 
+              href="/presets"
+              className="w-full flex items-center justify-center gap-2 bg-slate-800 text-white font-medium text-sm py-2.5 px-4 rounded-md hover:bg-slate-900 transition-colors shadow-sm"
+            >
+              Browse Topologies &rarr;
+            </Link>
           </div>
 
           <div className="mt-auto p-3 bg-slate-50 rounded-md border border-slate-200 text-xs shadow-inner">
@@ -311,7 +335,6 @@ export default function TrafficDashboard() {
               View Live Math Breakdown &rarr;
             </Link>
           </div>
-
         </div>
       </div>
     </div>
