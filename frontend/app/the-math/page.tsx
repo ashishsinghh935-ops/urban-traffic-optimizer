@@ -25,6 +25,48 @@ export default function TheMath() {
     }
   }, []);
 
+  const handleExportCSV = () => {
+    if (!data) return;
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    
+    // Title Section
+    csvContent += "URBAN TRAFFIC OPTIMIZER - SYSTEM EXPORT\n\n";
+
+    // 1. Augmented Matrix Headers
+    csvContent += "AUGMENTED MATRIX [ A | b ]\n";
+    const headers = ["Intersection", ...data.edgeLabels, "Boundary (b)"];
+    csvContent += headers.map(h => `"${h}"`).join(",") + "\n";
+    
+    // 2. Matrix Rows
+    data.matrix.forEach((row, idx) => {
+      const rowData = [
+        `"${data.nodeLabels[idx]}"`,
+        ...row,
+        data.bVector[idx]
+      ];
+      csvContent += rowData.join(",") + "\n";
+    });
+    
+    csvContent += "\n";
+    
+    // 3. Flow Vector (x) Result
+    csvContent += "OPTIMIZED FLOW VECTOR (x)\n";
+    csvContent += "Edge,Calculated Flow Units\n";
+    data.xVector.forEach((val, idx) => {
+      csvContent += `"${data.edgeLabels[idx]}",${Math.abs(Math.round(val))}\n`;
+    });
+    
+    // Trigger the file download
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "network_matrix_export.csv");
+    document.body.appendChild(link); 
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (!data) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-8 text-center">
@@ -45,9 +87,17 @@ export default function TheMath() {
         <div className="p-8 border-b border-slate-100 bg-slate-800 text-white">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-3xl font-bold tracking-tight">Step-by-Step Matrix Analysis</h1>
-            <Link href="/" className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors">
-              &larr; Back to Dashboard
-            </Link>
+            <div className="flex gap-3">
+              <button 
+                onClick={handleExportCSV}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium transition-colors shadow-sm flex items-center gap-2"
+              >
+                Download .CSV 
+              </button>
+              <Link href="/" className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm font-medium transition-colors shadow-sm">
+                &larr; Back to Dashboard
+              </Link>
+            </div>
           </div>
           <p className="text-slate-300 text-sm leading-relaxed max-w-3xl">
             This tool does not rely on simple heuristics. It treats the city grid as a vector space, translating intersections into systems of linear equations to calculate perfect flow conservation. Here is the mathematical breakdown of your specific network.
