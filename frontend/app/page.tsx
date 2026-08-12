@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation';
 import ReactFlow, { Background, Controls, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge, Connection } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-const defaultNodeStyle = 'bg-white border-2 border-slate-200 rounded-lg shadow-sm text-slate-700 font-semibold px-4 py-2 text-sm';
-const inflowNodeStyle = 'bg-blue-50 border-2 border-blue-400 rounded-lg shadow-sm text-blue-900 font-semibold px-4 py-2 text-sm';
-const outflowNodeStyle = 'bg-indigo-50 border-2 border-indigo-400 rounded-lg shadow-sm text-indigo-900 font-semibold px-4 py-2 text-sm';
+// UPDATED: Premium pill-shaped UI map markers
+const defaultNodeStyle = 'bg-white border-2 border-slate-200 rounded-full shadow-sm text-slate-700 font-bold px-5 py-2.5 text-[11px] uppercase tracking-wider transition-all hover:shadow-md hover:border-blue-400';
+const inflowNodeStyle = 'bg-slate-900 border-2 border-emerald-400 rounded-full shadow-md text-emerald-50 font-bold px-5 py-2.5 text-[11px] uppercase tracking-wider ring-4 ring-emerald-400/20';
+const outflowNodeStyle = 'bg-slate-900 border-2 border-rose-400 rounded-full shadow-md text-rose-50 font-bold px-5 py-2.5 text-[11px] uppercase tracking-wider ring-4 ring-rose-400/20';
 
 const customInitialNodes: Node[] = [
   { id: 'A', position: { x: 150, y: 100 }, data: { label: 'Node A (Inflow)' }, className: inflowNodeStyle },
