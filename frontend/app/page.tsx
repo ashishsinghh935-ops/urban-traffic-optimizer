@@ -46,7 +46,6 @@ export default function TrafficDashboard() {
     setEdges((eds) => addEdge(newEdge, eds));
   }, []);
 
-  // SCENARIO TESTER: Toggle edge blocked state on click
   const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
     setEdges((eds) => eds.map((e) => {
       if (e.id === edge.id) {
@@ -194,21 +193,10 @@ export default function TrafficDashboard() {
   };
 
   const handleOptimize = async () => {
-    // Only construct the incidence matrix from ACTIVE (unblocked) roads
     const activeEdges = edges.filter(e => !e.data?.blocked);
     if (activeEdges.length === 0) return setStatus("Error: No active roads available");
     
-    setStatus("Computing Matrix...");
-
-    const matrix: number[][] = Array(nodes.length).fill(0).map(() => Array(activeEdges.length).fill(0));
-    
-    activeEdges.forEach((edge, edgeIndex) => {
-      const sourceIndex = nodes.findIndex(n => n.id === edge.source);
-      const targetIndex = nodes.findIndex(n => n.id === edge.target);
-      if (sourceIndex !== -1) matrix[sourceIndex][edgeIndex] = 1;
-      if (targetIndex !== -1) matrix[targetIndex][edgeIndex] = -1;
-    });
-
+    // Calculate inflows first to determine boundaries
     const inflows = Array(nodes.length).fill(0);
     
     if (activePresetName.includes("Connaught Place")) {
@@ -238,6 +226,44 @@ export default function TrafficDashboard() {
       inflows[nodes.length - 1] = -outflowD;
     }
 
+    // PRE-FLIGHT TOPOLOGY CHECK
+    // Scans the active graph to prevent "Sinkholes" or "Trapped" nodes before hitting the server
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      const isBoundaryInflow = inflows[i] > 0;
+      const isBoundaryOutflow = inflows[i] < 0;
+      
+      const hasIncoming = activeEdges.some(e => e.target === node.id);
+      const hasOutgoing = activeEdges.some(e => e.source === node.id);
+
+      // 1. Traffic gets trapped at an internal intersection with nowhere to go
+      if (!isBoundaryOutflow && hasIncoming && !hasOutgoing) {
+        setStatus(`Warning: Traffic trapped at ${node.data.label}! Need outflow path.`);
+        return;
+      }
+      // 2. An intersection has outgoing traffic but no way for it to arrive
+      if (!isBoundaryInflow && hasOutgoing && !hasIncoming) {
+        setStatus(`Warning: Vacuum at ${node.data.label}! Needs inflow path.`);
+        return;
+      }
+      // 3. User blocked the only way out of an Inflow boundary
+      if (isBoundaryInflow && !hasOutgoing) {
+        setStatus(`Warning: Inflow completely blocked at ${node.data.label}!`);
+        return;
+      }
+    }
+
+    setStatus("Computing Matrix...");
+
+    const matrix: number[][] = Array(nodes.length).fill(0).map(() => Array(activeEdges.length).fill(0));
+    
+    activeEdges.forEach((edge, edgeIndex) => {
+      const sourceIndex = nodes.findIndex(n => n.id === edge.source);
+      const targetIndex = nodes.findIndex(n => n.id === edge.target);
+      if (sourceIndex !== -1) matrix[sourceIndex][edgeIndex] = 1;
+      if (targetIndex !== -1) matrix[targetIndex][edgeIndex] = -1;
+    });
+
     try {
       const response = await fetch('https://urban-traffic-optimizer.onrender.com/optimize', {
         method: 'POST',
@@ -254,7 +280,6 @@ export default function TrafficDashboard() {
         let activeIdx = 0;
         
         const updatedEdges = edges.map((edge) => {
-          // If the road was blocked, it gets absolutely zero flow
           if (edge.data?.blocked) {
             return {
               ...edge,
@@ -266,7 +291,6 @@ export default function TrafficDashboard() {
             };
           }
 
-          // Otherwise map the flow from the backend's x-vector
           const flow = Math.abs(data.optimized_flows[activeIdx] || 0); 
           activeIdx++;
 
@@ -413,7 +437,7 @@ export default function TrafficDashboard() {
 
           <div className="mt-auto p-3 bg-slate-50 rounded-md border border-slate-200 text-xs shadow-inner">
             <span className="block font-semibold text-slate-700 mb-1">System Status:</span> 
-            <span className={status.includes('Error') ? 'text-red-600' : 'text-blue-600'}>{status}</span>
+            <span className={status.includes('Error') || status.includes('Warning') ? 'text-red-600' : 'text-blue-600'}>{status}</span>
           </div>
         </div>
       </div>
