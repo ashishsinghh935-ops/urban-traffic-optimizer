@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import ReactFlow, { Background, Controls, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge, Connection } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-// UPDATED: Premium pill-shaped UI map markers
 const defaultNodeStyle = 'bg-white border-2 border-slate-200 rounded-full shadow-sm text-slate-700 font-bold px-5 py-2.5 text-[11px] uppercase tracking-wider transition-all hover:shadow-md hover:border-blue-400';
 const inflowNodeStyle = 'bg-slate-900 border-2 border-emerald-400 rounded-full shadow-md text-emerald-50 font-bold px-5 py-2.5 text-[11px] uppercase tracking-wider ring-4 ring-emerald-400/20';
 const outflowNodeStyle = 'bg-slate-900 border-2 border-rose-400 rounded-full shadow-md text-rose-50 font-bold px-5 py-2.5 text-[11px] uppercase tracking-wider ring-4 ring-rose-400/20';
@@ -238,14 +237,25 @@ export default function TrafficDashboard() {
           if (flow > max) max = flow;
           if (isBottleneck) bCount++;
 
+          // Dynamic animation calculation:
+          // Maps a lower flow to a slower animation (up to 3 seconds), and a high flow to a fast pulse (min 0.3 seconds).
+          const animDuration = Math.max(0.3, 3 - (flow / capacityThreshold) * 2.5);
+          
+          // Determine edge color based on flow state
+          let edgeColor = '#cbd5e1'; // Slate gray for zero flow
+          if (isBottleneck) edgeColor = '#ef4444'; // Red for bottleneck
+          else if (flow > 0) edgeColor = '#3b82f6'; // Active blue for moving traffic
+
           return {
             ...edge,
             label: `${flow} units/hr`,
-            labelStyle: { fill: '#334155', fontWeight: 600 },
-            labelBgStyle: { fill: '#ffffff', fillOpacity: 0.8 },
+            animated: flow > 0, // Stop the line animation entirely if flow is 0
+            labelStyle: { fill: '#334155', fontWeight: 700 },
+            labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
             style: { 
-              stroke: isBottleneck ? '#ef4444' : '#10b981', 
-              strokeWidth: isBottleneck ? 3 : 2 
+              stroke: edgeColor,
+              strokeWidth: isBottleneck ? 4 : (flow > 0 ? 3 : 2),
+              animationDuration: `${animDuration}s` 
             }
           };
         });
