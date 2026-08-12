@@ -71,7 +71,6 @@ export default function TrafficDashboard() {
     if (presetId === 'cp') {
       setActivePresetName("Connaught Place (Locked)");
       setIsLocked(true);
-      // Massive 11-node authentic concentric grid for CP
       setNodes([
         { id: 'cp-in', position: { x: 500, y: 50 }, data: { label: 'Minto Rd (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
         { id: 'cp-oc-ne', position: { x: 800, y: 200 }, data: { label: 'Barakhamba Rd' }, className: defaultNodeStyle, draggable: false, selectable: false },
@@ -86,26 +85,22 @@ export default function TrafficDashboard() {
         { id: 'cp-center', position: { x: 500, y: 350 }, data: { label: 'Rajiv Chowk Station' }, className: defaultNodeStyle, draggable: false, selectable: false },
       ]);
       setEdges([
-        // Outer Ring
         { id: 'e-in-nw', source: 'cp-in', target: 'cp-oc-nw', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-nw-sw', source: 'cp-oc-nw', target: 'cp-oc-sw', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-sw-out', source: 'cp-oc-sw', target: 'cp-out', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-out-se', source: 'cp-out', target: 'cp-oc-se', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-se-ne', source: 'cp-oc-se', target: 'cp-oc-ne', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-ne-in', source: 'cp-oc-ne', target: 'cp-in', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        // Inner Ring
         { id: 'e-ic-n-e', source: 'cp-ic-n', target: 'cp-ic-e', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-ic-e-s', source: 'cp-ic-e', target: 'cp-ic-s', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-ic-s-w', source: 'cp-ic-s', target: 'cp-ic-w', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-ic-w-n', source: 'cp-ic-w', target: 'cp-ic-n', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        // Radials In/Out
         { id: 'e-r-in', source: 'cp-in', target: 'cp-ic-n', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-r-ne', source: 'cp-oc-ne', target: 'cp-ic-e', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-r-out', source: 'cp-ic-s', target: 'cp-out', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-r-sw', source: 'cp-oc-sw', target: 'cp-ic-w', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-r-nw', source: 'cp-ic-w', target: 'cp-oc-nw', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-r-se', source: 'cp-ic-e', target: 'cp-oc-se', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        // Center Cross
         { id: 'e-c-n', source: 'cp-ic-n', target: 'cp-center', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-c-s', source: 'cp-center', target: 'cp-ic-s', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-c-w', source: 'cp-ic-w', target: 'cp-center', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
@@ -142,6 +137,33 @@ export default function TrafficDashboard() {
         { id: 'e-k-m', source: 'du-kamla', target: 'du-malka', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
       ]);
     }
+    else if (presetId === 'igi-connector') {
+      setActivePresetName("IGI Airport Connector (Locked)");
+      setIsLocked(true);
+      setNodes([
+        { id: 'igi-dk', position: { x: 800, y: 100 }, data: { label: 'Dhaula Kuan (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
+        { id: 'igi-nh8', position: { x: 800, y: 600 }, data: { label: 'NH-48 Gurgaon (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
+        { id: 'igi-vk', position: { x: 500, y: 700 }, data: { label: 'Vasant Kunj (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
+        { id: 'igi-rtr', position: { x: 500, y: 150 }, data: { label: 'RTR Flyover' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'igi-mahipalpur', position: { x: 500, y: 450 }, data: { label: 'Mahipalpur Junction' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'igi-tunnel', position: { x: 300, y: 250 }, data: { label: 'Airport Express Tunnel' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'igi-aerocity', position: { x: 300, y: 450 }, data: { label: 'Aerocity Hub' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'igi-t1', position: { x: 50, y: 150 }, data: { label: 'Terminal 1 (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
+        { id: 'igi-t3', position: { x: 50, y: 450 }, data: { label: 'Terminal 3 (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
+      ]);
+      setEdges([
+        { id: 'e-dk-rtr', source: 'igi-dk', target: 'igi-rtr', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-dk-mahi', source: 'igi-dk', target: 'igi-mahipalpur', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-nh8-mahi', source: 'igi-nh8', target: 'igi-mahipalpur', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-vk-mahi', source: 'igi-vk', target: 'igi-mahipalpur', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-rtr-tunnel', source: 'igi-rtr', target: 'igi-tunnel', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-rtr-t1', source: 'igi-rtr', target: 'igi-t1', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-mahi-aero', source: 'igi-mahipalpur', target: 'igi-aerocity', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-tunnel-t3', source: 'igi-tunnel', target: 'igi-t3', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-aero-t3', source: 'igi-aerocity', target: 'igi-t3', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-aero-t1', source: 'igi-aerocity', target: 'igi-t1', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+      ]);
+    }
     else {
       setActivePresetName("Custom Network");
       setIsLocked(false);
@@ -176,6 +198,18 @@ export default function TrafficDashboard() {
       const outNode = nodes.findIndex(n => n.id === 'du-malka');
       if (inNode !== -1) inflows[inNode] = inflowA;
       if (outNode !== -1) inflows[outNode] = -outflowD;
+    } else if (activePresetName.includes("IGI Airport Connector")) {
+      const inNodes = ['igi-dk', 'igi-nh8', 'igi-vk'];
+      const outNodes = ['igi-t1', 'igi-t3'];
+      
+      inNodes.forEach(id => {
+        const idx = nodes.findIndex(n => n.id === id);
+        if (idx !== -1) inflows[idx] = inflowA / inNodes.length; 
+      });
+      outNodes.forEach(id => {
+        const idx = nodes.findIndex(n => n.id === id);
+        if (idx !== -1) inflows[idx] = -outflowD / outNodes.length;
+      });
     } else {
       inflows[0] = inflowA;
       inflows[nodes.length - 1] = -outflowD;

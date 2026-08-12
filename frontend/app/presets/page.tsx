@@ -8,14 +8,13 @@ export default function PresetGallery() {
   const router = useRouter();
 
   const handleSelectPreset = (presetId: string) => {
-    // Save the selection to session storage so the dashboard knows what to load
     sessionStorage.setItem('pendingPreset', presetId);
-    router.push('/'); // Redirect back to dashboard
+    router.push('/');
   };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans p-8 md:p-16">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         
         {/* Header */}
         <div className="flex justify-between items-center mb-12">
@@ -29,7 +28,7 @@ export default function PresetGallery() {
         </div>
 
         {/* Gallery Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           
           {/* Card 1: North Campus */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
@@ -63,7 +62,23 @@ export default function PresetGallery() {
             </div>
           </div>
 
-          {/* Card 3: Custom Sandbox */}
+          {/* Card 3: IGI Connector */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+            <div className="h-32 bg-emerald-600 flex items-center justify-center p-6 relative overflow-hidden">
+              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent"></div>
+              <h2 className="text-xl font-bold text-white relative z-10 text-center">IGI Airport<br/><span className="text-emerald-200 text-sm font-medium">Connector Grid</span></h2>
+            </div>
+            <div className="p-6 flex-1 flex flex-col">
+              <p className="text-sm text-slate-600 mb-6 flex-1">
+                A high-complexity topology strictly mirroring the Dhaula Kuan-Aerocity interchange. It balances flow between NH-48 inputs, the RTR flyover, and the airport terminals.
+              </p>
+              <button onClick={() => handleSelectPreset('igi-connector')} className="w-full bg-slate-900 text-white font-medium py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-sm">
+                Load Topology
+              </button>
+            </div>
+          </div>
+
+          {/* Card 4: Custom Sandbox */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow border-dashed">
             <div className="h-32 bg-slate-100 flex items-center justify-center p-6 border-b border-slate-200 border-dashed">
               <h2 className="text-xl font-bold text-slate-700 text-center">Custom Sandbox<br/><span className="text-slate-500 text-sm font-medium">Blank Canvas</span></h2>
