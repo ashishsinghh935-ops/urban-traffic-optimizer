@@ -18,10 +18,10 @@ const customInitialNodes: Node[] = [
 ];
 
 const customInitialEdges: Edge[] = [
-  { id: 'eA-B', source: 'A', target: 'B', animated: true, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-  { id: 'eA-C', source: 'A', target: 'C', animated: true, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-  { id: 'eB-D', source: 'B', target: 'D', animated: true, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-  { id: 'eC-D', source: 'C', target: 'D', animated: true, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+  { id: 'eA-B', source: 'A', target: 'B', animated: true, data: { blocked: false }, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+  { id: 'eA-C', source: 'A', target: 'C', animated: true, data: { blocked: false }, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+  { id: 'eB-D', source: 'B', target: 'D', animated: true, data: { blocked: false }, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+  { id: 'eC-D', source: 'C', target: 'D', animated: true, data: { blocked: false }, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } },
 ];
 
 export default function TrafficDashboard() {
@@ -42,8 +42,28 @@ export default function TrafficDashboard() {
   const onEdgesChange = useCallback((changes: any) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
   
   const onConnect = useCallback((params: Connection) => {
-    const newEdge = { ...params, id: `e${params.source}-${params.target}`, animated: true, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } };
+    const newEdge = { ...params, id: `e${params.source}-${params.target}`, animated: true, data: { blocked: false }, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } };
     setEdges((eds) => addEdge(newEdge, eds));
+  }, []);
+
+  // SCENARIO TESTER: Toggle edge blocked state on click
+  const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
+    setEdges((eds) => eds.map((e) => {
+      if (e.id === edge.id) {
+        const isBlocked = !e.data?.blocked;
+        return {
+          ...e,
+          data: { ...e.data, blocked: isBlocked },
+          label: isBlocked ? 'BLOCKED 🚧' : '---',
+          animated: !isBlocked,
+          labelStyle: isBlocked ? { fill: '#ef4444', fontWeight: 700 } : { fill: '#334155', fontWeight: 600 },
+          style: isBlocked 
+            ? { stroke: '#cbd5e1', strokeWidth: 2, strokeDasharray: '5,5', opacity: 0.5 }
+            : { stroke: '#94a3b8', strokeWidth: 2 }
+        };
+      }
+      return e;
+    }));
   }, []);
 
   useEffect(() => {
@@ -85,26 +105,26 @@ export default function TrafficDashboard() {
         { id: 'cp-center', position: { x: 500, y: 350 }, data: { label: 'Rajiv Chowk Station' }, className: defaultNodeStyle, draggable: false, selectable: false },
       ]);
       setEdges([
-        { id: 'e-in-nw', source: 'cp-in', target: 'cp-oc-nw', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-nw-sw', source: 'cp-oc-nw', target: 'cp-oc-sw', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-sw-out', source: 'cp-oc-sw', target: 'cp-out', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-out-se', source: 'cp-out', target: 'cp-oc-se', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-se-ne', source: 'cp-oc-se', target: 'cp-oc-ne', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-ne-in', source: 'cp-oc-ne', target: 'cp-in', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-ic-n-e', source: 'cp-ic-n', target: 'cp-ic-e', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-ic-e-s', source: 'cp-ic-e', target: 'cp-ic-s', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-ic-s-w', source: 'cp-ic-s', target: 'cp-ic-w', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-ic-w-n', source: 'cp-ic-w', target: 'cp-ic-n', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-r-in', source: 'cp-in', target: 'cp-ic-n', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-r-ne', source: 'cp-oc-ne', target: 'cp-ic-e', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-r-out', source: 'cp-ic-s', target: 'cp-out', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-r-sw', source: 'cp-oc-sw', target: 'cp-ic-w', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-r-nw', source: 'cp-ic-w', target: 'cp-oc-nw', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-r-se', source: 'cp-ic-e', target: 'cp-oc-se', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-c-n', source: 'cp-ic-n', target: 'cp-center', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-c-s', source: 'cp-center', target: 'cp-ic-s', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-c-w', source: 'cp-ic-w', target: 'cp-center', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-c-e', source: 'cp-center', target: 'cp-ic-e', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-in-nw', source: 'cp-in', target: 'cp-oc-nw', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-nw-sw', source: 'cp-oc-nw', target: 'cp-oc-sw', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-sw-out', source: 'cp-oc-sw', target: 'cp-out', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-out-se', source: 'cp-out', target: 'cp-oc-se', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-se-ne', source: 'cp-oc-se', target: 'cp-oc-ne', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-ne-in', source: 'cp-oc-ne', target: 'cp-in', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-ic-n-e', source: 'cp-ic-n', target: 'cp-ic-e', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-ic-e-s', source: 'cp-ic-e', target: 'cp-ic-s', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-ic-s-w', source: 'cp-ic-s', target: 'cp-ic-w', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-ic-w-n', source: 'cp-ic-w', target: 'cp-ic-n', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-r-in', source: 'cp-in', target: 'cp-ic-n', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-r-ne', source: 'cp-oc-ne', target: 'cp-ic-e', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-r-out', source: 'cp-ic-s', target: 'cp-out', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-r-sw', source: 'cp-oc-sw', target: 'cp-ic-w', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-r-nw', source: 'cp-ic-w', target: 'cp-oc-nw', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-r-se', source: 'cp-ic-e', target: 'cp-oc-se', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-c-n', source: 'cp-ic-n', target: 'cp-center', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-c-s', source: 'cp-center', target: 'cp-ic-s', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-c-w', source: 'cp-ic-w', target: 'cp-center', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-c-e', source: 'cp-center', target: 'cp-ic-e', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
       ]);
     } 
     else if (presetId === 'du-north') {
@@ -122,19 +142,19 @@ export default function TrafficDashboard() {
         { id: 'du-malka', position: { x: 500, y: 600 }, data: { label: 'Malka Ganj Chowk (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
       ]);
       setEdges([
-        { id: 'e-m-k', source: 'du-metro', target: 'du-khalsa', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-m-a', source: 'du-metro', target: 'du-arts', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-k-a', source: 'du-khalsa', target: 'du-arts', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-k-p', source: 'du-khalsa', target: 'du-patel', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-a-s', source: 'du-arts', target: 'du-stephens', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-a-c', source: 'du-arts', target: 'du-cic', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-p-r', source: 'du-patel', target: 'du-ramjas', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-p-m', source: 'du-patel', target: 'du-malka', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-s-r', source: 'du-stephens', target: 'du-ramjas', animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-s-k', source: 'du-stephens', target: 'du-kamla', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-c-k', source: 'du-cic', target: 'du-kamla', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-r-m', source: 'du-ramjas', target: 'du-malka', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-k-m', source: 'du-kamla', target: 'du-malka', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-m-k', source: 'du-metro', target: 'du-khalsa', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-m-a', source: 'du-metro', target: 'du-arts', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-k-a', source: 'du-khalsa', target: 'du-arts', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-k-p', source: 'du-khalsa', target: 'du-patel', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-a-s', source: 'du-arts', target: 'du-stephens', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-a-c', source: 'du-arts', target: 'du-cic', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-p-r', source: 'du-patel', target: 'du-ramjas', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-p-m', source: 'du-patel', target: 'du-malka', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-s-r', source: 'du-stephens', target: 'du-ramjas', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-s-k', source: 'du-stephens', target: 'du-kamla', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-c-k', source: 'du-cic', target: 'du-kamla', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-r-m', source: 'du-ramjas', target: 'du-malka', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-k-m', source: 'du-kamla', target: 'du-malka', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
       ]);
     }
     else if (presetId === 'igi-connector') {
@@ -152,16 +172,16 @@ export default function TrafficDashboard() {
         { id: 'igi-t3', position: { x: 50, y: 450 }, data: { label: 'Terminal 3 (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
       ]);
       setEdges([
-        { id: 'e-dk-rtr', source: 'igi-dk', target: 'igi-rtr', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-dk-mahi', source: 'igi-dk', target: 'igi-mahipalpur', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-nh8-mahi', source: 'igi-nh8', target: 'igi-mahipalpur', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-vk-mahi', source: 'igi-vk', target: 'igi-mahipalpur', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-rtr-tunnel', source: 'igi-rtr', target: 'igi-tunnel', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-rtr-t1', source: 'igi-rtr', target: 'igi-t1', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-mahi-aero', source: 'igi-mahipalpur', target: 'igi-aerocity', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-tunnel-t3', source: 'igi-tunnel', target: 'igi-t3', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-aero-t3', source: 'igi-aerocity', target: 'igi-t3', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-        { id: 'e-aero-t1', source: 'igi-aerocity', target: 'igi-t1', animated: true, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-dk-rtr', source: 'igi-dk', target: 'igi-rtr', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-dk-mahi', source: 'igi-dk', target: 'igi-mahipalpur', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-nh8-mahi', source: 'igi-nh8', target: 'igi-mahipalpur', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-vk-mahi', source: 'igi-vk', target: 'igi-mahipalpur', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-rtr-tunnel', source: 'igi-rtr', target: 'igi-tunnel', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-rtr-t1', source: 'igi-rtr', target: 'igi-t1', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-mahi-aero', source: 'igi-mahipalpur', target: 'igi-aerocity', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-tunnel-t3', source: 'igi-tunnel', target: 'igi-t3', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-aero-t3', source: 'igi-aerocity', target: 'igi-t3', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
+        { id: 'e-aero-t1', source: 'igi-aerocity', target: 'igi-t1', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
       ]);
     }
     else {
@@ -174,12 +194,15 @@ export default function TrafficDashboard() {
   };
 
   const handleOptimize = async () => {
-    if (edges.length === 0) return setStatus("Error: No topology found");
+    // Only construct the incidence matrix from ACTIVE (unblocked) roads
+    const activeEdges = edges.filter(e => !e.data?.blocked);
+    if (activeEdges.length === 0) return setStatus("Error: No active roads available");
+    
     setStatus("Computing Matrix...");
 
-    const matrix: number[][] = Array(nodes.length).fill(0).map(() => Array(edges.length).fill(0));
+    const matrix: number[][] = Array(nodes.length).fill(0).map(() => Array(activeEdges.length).fill(0));
     
-    edges.forEach((edge, edgeIndex) => {
+    activeEdges.forEach((edge, edgeIndex) => {
       const sourceIndex = nodes.findIndex(n => n.id === edge.source);
       const targetIndex = nodes.findIndex(n => n.id === edge.target);
       if (sourceIndex !== -1) matrix[sourceIndex][edgeIndex] = 1;
@@ -228,28 +251,39 @@ export default function TrafficDashboard() {
         let total = 0;
         let max = 0;
         let bCount = 0;
+        let activeIdx = 0;
         
-        const updatedEdges = edges.map((edge, index) => {
-          const flow = Math.abs(data.optimized_flows[index] || 0); 
+        const updatedEdges = edges.map((edge) => {
+          // If the road was blocked, it gets absolutely zero flow
+          if (edge.data?.blocked) {
+            return {
+              ...edge,
+              label: 'BLOCKED 🚧',
+              animated: false,
+              labelStyle: { fill: '#ef4444', fontWeight: 700 },
+              labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
+              style: { stroke: '#cbd5e1', strokeWidth: 2, strokeDasharray: '5,5', opacity: 0.5 }
+            };
+          }
+
+          // Otherwise map the flow from the backend's x-vector
+          const flow = Math.abs(data.optimized_flows[activeIdx] || 0); 
+          activeIdx++;
+
           const isBottleneck = flow >= capacityThreshold;
-          
           total += flow;
           if (flow > max) max = flow;
           if (isBottleneck) bCount++;
 
-          // Dynamic animation calculation:
-          // Maps a lower flow to a slower animation (up to 3 seconds), and a high flow to a fast pulse (min 0.3 seconds).
           const animDuration = Math.max(0.3, 3 - (flow / capacityThreshold) * 2.5);
-          
-          // Determine edge color based on flow state
-          let edgeColor = '#cbd5e1'; // Slate gray for zero flow
-          if (isBottleneck) edgeColor = '#ef4444'; // Red for bottleneck
-          else if (flow > 0) edgeColor = '#3b82f6'; // Active blue for moving traffic
+          let edgeColor = '#cbd5e1'; 
+          if (isBottleneck) edgeColor = '#ef4444'; 
+          else if (flow > 0) edgeColor = '#3b82f6'; 
 
           return {
             ...edge,
             label: `${flow} units/hr`,
-            animated: flow > 0, // Stop the line animation entirely if flow is 0
+            animated: flow > 0,
             labelStyle: { fill: '#334155', fontWeight: 700 },
             labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
             style: { 
@@ -272,7 +306,7 @@ export default function TrafficDashboard() {
           bVector: inflows,
           xVector: data.optimized_flows,
           nodeLabels: nodes.map(n => n.data.label),
-          edgeLabels: edges.map(e => `${getNodeLabel(e.source)} → ${getNodeLabel(e.target)}`),
+          edgeLabels: activeEdges.map(e => `${getNodeLabel(e.source)} → ${getNodeLabel(e.target)}`),
           nodes: nodes,
           edges: updatedEdges 
         }));
@@ -339,6 +373,16 @@ export default function TrafficDashboard() {
 
           <hr className="border-slate-100 my-2" />
 
+          {/* SCENARIO TESTER TIP */}
+          <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg mb-2 shadow-inner">
+            <span className="text-xs font-bold text-amber-800 uppercase tracking-wide flex items-center gap-1 mb-1">
+              🚧 Scenario Tester
+            </span>
+            <p className="text-[11px] text-amber-700 leading-relaxed">
+              Click any road on the map to block it (simulate accidents/closures). Run the engine to see how traffic dynamically reroutes.
+            </p>
+          </div>
+
           {!isLocked && (
             <button 
               onClick={handleAddIntersection} 
@@ -381,11 +425,12 @@ export default function TrafficDashboard() {
           onNodesChange={isLocked ? undefined : onNodesChange} 
           onEdgesChange={isLocked ? undefined : onEdgesChange} 
           onConnect={onConnect} 
+          onEdgeClick={onEdgeClick}
           nodesDraggable={!isLocked}
           nodesConnectable={!isLocked}
-          elementsSelectable={!isLocked}
+          elementsSelectable={true}
           fitView
-          className="bg-slate-50"
+          className="bg-slate-50 cursor-pointer"
         >
           <Background color="#cbd5e1" gap={20} size={1} />
           <Controls className="bg-white border-slate-200 fill-slate-600 shadow-sm" showInteractive={false} />
