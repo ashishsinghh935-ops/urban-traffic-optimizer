@@ -30,9 +30,8 @@ export default function TrafficDashboard() {
   const [edges, setEdges] = useState<Edge[]>(customInitialEdges);
   const [status, setStatus] = useState("System Standby");
   
-  // FIX: Allow state to hold an empty string temporarily while typing
-  const [inflowA, setInflowA] = useState<number | string>(100);
-  const [outflowD, setOutflowD] = useState<number | string>(100);
+  // FIX: Single source of truth for network volume to guarantee mass conservation
+  const [networkVolume, setNetworkVolume] = useState<number | string>(100);
   
   const [capacityThreshold, setCapacityThreshold] = useState(80);
   const [isLocked, setIsLocked] = useState(false);
@@ -195,40 +194,40 @@ export default function TrafficDashboard() {
   };
 
   const handleOptimize = async () => {
-    // FIX: Safely parse empty strings back to 0 before calculating
-    const parsedInflow = Number(inflowA) || 0;
-    const parsedOutflow = Number(outflowD) || 0;
+    // FIX: Single source of truth. The total inflow and outflow always mirror each other perfectly.
+    const parsedVolume = Number(networkVolume) || 0;
 
     const activeEdges = edges.filter(e => !e.data?.blocked);
     if (activeEdges.length === 0) return setStatus("Error: No active roads available");
     
     const inflows = Array(nodes.length).fill(0);
     
+    // Balance the boundary vectors uniformly using parsedVolume
     if (activePresetName.includes("Connaught Place")) {
       const inNode = nodes.findIndex(n => n.id === 'cp-in');
       const outNode = nodes.findIndex(n => n.id === 'cp-out');
-      if (inNode !== -1) inflows[inNode] = parsedInflow;
-      if (outNode !== -1) inflows[outNode] = -parsedOutflow;
+      if (inNode !== -1) inflows[inNode] = parsedVolume;
+      if (outNode !== -1) inflows[outNode] = -parsedVolume;
     } else if (activePresetName.includes("DU North Campus")) {
       const inNode = nodes.findIndex(n => n.id === 'du-metro');
       const outNode = nodes.findIndex(n => n.id === 'du-malka');
-      if (inNode !== -1) inflows[inNode] = parsedInflow;
-      if (outNode !== -1) inflows[outNode] = -parsedOutflow;
+      if (inNode !== -1) inflows[inNode] = parsedVolume;
+      if (outNode !== -1) inflows[outNode] = -parsedVolume;
     } else if (activePresetName.includes("IGI Airport Connector")) {
       const inNodes = ['igi-dk', 'igi-nh8', 'igi-vk'];
       const outNodes = ['igi-t1', 'igi-t3'];
       
       inNodes.forEach(id => {
         const idx = nodes.findIndex(n => n.id === id);
-        if (idx !== -1) inflows[idx] = parsedInflow / inNodes.length; 
+        if (idx !== -1) inflows[idx] = parsedVolume / inNodes.length; 
       });
       outNodes.forEach(id => {
         const idx = nodes.findIndex(n => n.id === id);
-        if (idx !== -1) inflows[idx] = -parsedOutflow / outNodes.length;
+        if (idx !== -1) inflows[idx] = -parsedVolume / outNodes.length;
       });
     } else {
-      inflows[0] = parsedInflow;
-      inflows[nodes.length - 1] = -parsedOutflow;
+      inflows[0] = parsedVolume;
+      inflows[nodes.length - 1] = -parsedVolume;
     }
 
     for (let i = 0; i < nodes.length; i++) {
@@ -360,24 +359,13 @@ export default function TrafficDashboard() {
              <span className="text-xs font-bold text-slate-800">{activePresetName}</span>
           </div>
 
+          {/* Unified Volume Controller */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Inflow Volume</label>
+            <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Total Network Volume</label>
             <input 
               type="number" 
-              value={inflowA} 
-              // FIX: Handle empty string state directly in onChange
-              onChange={(e) => setInflowA(e.target.value === '' ? '' : Number(e.target.value))} 
-              className="w-full bg-white border border-slate-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-slate-800" 
-            />
-          </div>
-          
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Outflow Volume</label>
-            <input 
-              type="number" 
-              value={outflowD} 
-              // FIX: Handle empty string state directly in onChange
-              onChange={(e) => setOutflowD(e.target.value === '' ? '' : Number(e.target.value))} 
+              value={networkVolume} 
+              onChange={(e) => setNetworkVolume(e.target.value === '' ? '' : Number(e.target.value))} 
               className="w-full bg-white border border-slate-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-slate-800" 
             />
           </div>
