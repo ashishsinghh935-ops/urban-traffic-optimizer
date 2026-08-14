@@ -30,14 +30,20 @@ export default function TrafficDashboard() {
   const [edges, setEdges] = useState<Edge[]>(customInitialEdges);
   const [status, setStatus] = useState("System Standby");
   
-  // FIX: Single source of truth for network volume to guarantee mass conservation
-  const [networkVolume, setNetworkVolume] = useState<number | string>(100);
+  // DYNAMIC OD MATRIX STATE
+  const [inflowVolumes, setInflowVolumes] = useState<Record<string, string | number>>({ 'A': 1000 });
+  const [outflowVolumes, setOutflowVolumes] = useState<Record<string, string | number>>({ 'D': 1000 });
   
   const [capacityThreshold, setCapacityThreshold] = useState(80);
   const [isLocked, setIsLocked] = useState(false);
   const [activePresetName, setActivePresetName] = useState("Custom Network");
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [metrics, setMetrics] = useState({ totalFlow: 0, maxFlow: 0, bottleneckCount: 0 });
+
+  // CALCULATE LIVE TOTALS
+  const totalInflow = Object.values(inflowVolumes).reduce((sum, val) => sum + (Number(val) || 0), 0) as number;
+  const totalOutflow = Object.values(outflowVolumes).reduce((sum, val) => sum + (Number(val) || 0), 0) as number;
+  const isBalanced = totalInflow === totalOutflow && totalInflow > 0;
 
   const onNodesChange = useCallback((changes: any) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
   const onEdgesChange = useCallback((changes: any) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
@@ -87,11 +93,14 @@ export default function TrafficDashboard() {
 
   const loadPreset = (presetId: string) => {
     setShowAnalysis(false);
+    
+    let n: Node[] = [];
+    let e: Edge[] = [];
 
     if (presetId === 'cp') {
       setActivePresetName("Connaught Place (Locked)");
       setIsLocked(true);
-      setNodes([
+      n = [
         { id: 'cp-in', position: { x: 500, y: 50 }, data: { label: 'Minto Rd (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
         { id: 'cp-oc-ne', position: { x: 800, y: 200 }, data: { label: 'Barakhamba Rd' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'cp-oc-se', position: { x: 800, y: 500 }, data: { label: 'K.G. Marg' }, className: defaultNodeStyle, draggable: false, selectable: false },
@@ -103,8 +112,8 @@ export default function TrafficDashboard() {
         { id: 'cp-ic-s', position: { x: 500, y: 500 }, data: { label: 'Inner Circle (S)' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'cp-ic-w', position: { x: 350, y: 350 }, data: { label: 'Inner Circle (W)' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'cp-center', position: { x: 500, y: 350 }, data: { label: 'Rajiv Chowk Station' }, className: defaultNodeStyle, draggable: false, selectable: false },
-      ]);
-      setEdges([
+      ];
+      e = [
         { id: 'e-in-nw', source: 'cp-in', target: 'cp-oc-nw', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-nw-sw', source: 'cp-oc-nw', target: 'cp-oc-sw', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-sw-out', source: 'cp-oc-sw', target: 'cp-out', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
@@ -125,12 +134,12 @@ export default function TrafficDashboard() {
         { id: 'e-c-s', source: 'cp-center', target: 'cp-ic-s', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-c-w', source: 'cp-ic-w', target: 'cp-center', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-c-e', source: 'cp-center', target: 'cp-ic-e', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
-      ]);
+      ];
     } 
     else if (presetId === 'du-north') {
       setActivePresetName("DU North Campus (Locked)");
       setIsLocked(true);
-      setNodes([
+      n = [
         { id: 'du-metro', position: { x: 500, y: 50 }, data: { label: 'Vishwavidyalaya Metro (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
         { id: 'du-khalsa', position: { x: 300, y: 150 }, data: { label: 'GTB Rd / SGTB Khalsa' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'du-arts', position: { x: 700, y: 150 }, data: { label: 'Chatra Marg / Arts Faculty' }, className: defaultNodeStyle, draggable: false, selectable: false },
@@ -140,8 +149,8 @@ export default function TrafficDashboard() {
         { id: 'du-ramjas', position: { x: 400, y: 450 }, data: { label: 'Sudhir Bose Marg / Ramjas' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'du-kamla', position: { x: 800, y: 450 }, data: { label: 'Bungalow Rd / Kamla Nagar' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'du-malka', position: { x: 500, y: 600 }, data: { label: 'Malka Ganj Chowk (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
-      ]);
-      setEdges([
+      ];
+      e = [
         { id: 'e-m-k', source: 'du-metro', target: 'du-khalsa', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-m-a', source: 'du-metro', target: 'du-arts', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-k-a', source: 'du-khalsa', target: 'du-arts', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
@@ -155,12 +164,12 @@ export default function TrafficDashboard() {
         { id: 'e-c-k', source: 'du-cic', target: 'du-kamla', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-r-m', source: 'du-ramjas', target: 'du-malka', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-k-m', source: 'du-kamla', target: 'du-malka', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-      ]);
+      ];
     }
     else if (presetId === 'igi-connector') {
       setActivePresetName("IGI Airport Connector (Locked)");
       setIsLocked(true);
-      setNodes([
+      n = [
         { id: 'igi-dk', position: { x: 800, y: 100 }, data: { label: 'Dhaula Kuan (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
         { id: 'igi-nh8', position: { x: 800, y: 600 }, data: { label: 'NH-48 Gurgaon (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
         { id: 'igi-vk', position: { x: 500, y: 700 }, data: { label: 'Vasant Kunj (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
@@ -170,8 +179,8 @@ export default function TrafficDashboard() {
         { id: 'igi-aerocity', position: { x: 300, y: 450 }, data: { label: 'Aerocity Hub' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'igi-t1', position: { x: 50, y: 150 }, data: { label: 'Terminal 1 (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
         { id: 'igi-t3', position: { x: 50, y: 450 }, data: { label: 'Terminal 3 (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
-      ]);
-      setEdges([
+      ];
+      e = [
         { id: 'e-dk-rtr', source: 'igi-dk', target: 'igi-rtr', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-dk-mahi', source: 'igi-dk', target: 'igi-mahipalpur', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-nh8-mahi', source: 'igi-nh8', target: 'igi-mahipalpur', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
@@ -182,54 +191,65 @@ export default function TrafficDashboard() {
         { id: 'e-tunnel-t3', source: 'igi-tunnel', target: 'igi-t3', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-aero-t3', source: 'igi-aerocity', target: 'igi-t3', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-aero-t1', source: 'igi-aerocity', target: 'igi-t1', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
-      ]);
+      ];
     }
     else {
       setActivePresetName("Custom Network");
       setIsLocked(false);
-      const unlockedNodes = customInitialNodes.map(node => ({ ...node, draggable: true, selectable: true }));
-      setNodes(unlockedNodes);
-      setEdges(customInitialEdges);
+      n = customInitialNodes.map(node => ({ ...node, draggable: true, selectable: true }));
+      e = customInitialEdges;
     }
+
+    setNodes(n);
+    setEdges(e);
+
+    // AUTO-DISTRIBUTE EXACTLY 1000 UNITS ACROSS ACTIVE NODES
+    const initialIn: Record<string, number> = {};
+    const initialOut: Record<string, number> = {};
+    const ins = n.filter(node => node.className === inflowNodeStyle);
+    const outs = n.filter(node => node.className === outflowNodeStyle);
+    
+    let inSum = 0;
+    ins.forEach((node, i) => {
+      if (i === ins.length - 1) initialIn[node.id] = 1000 - inSum;
+      else {
+        const val = Math.floor(1000 / ins.length);
+        initialIn[node.id] = val;
+        inSum += val;
+      }
+    });
+
+    let outSum = 0;
+    outs.forEach((node, i) => {
+      if (i === outs.length - 1) initialOut[node.id] = 1000 - outSum;
+      else {
+        const val = Math.floor(1000 / outs.length);
+        initialOut[node.id] = val;
+        outSum += val;
+      }
+    });
+
+    setInflowVolumes(initialIn);
+    setOutflowVolumes(initialOut);
   };
 
   const handleOptimize = async () => {
-    // FIX: Single source of truth. The total inflow and outflow always mirror each other perfectly.
-    const parsedVolume = Number(networkVolume) || 0;
-
     const activeEdges = edges.filter(e => !e.data?.blocked);
     if (activeEdges.length === 0) return setStatus("Error: No active roads available");
     
+    // BUILD THE DYNAMIC BOUNDARY VECTOR (b)
     const inflows = Array(nodes.length).fill(0);
-    
-    // Balance the boundary vectors uniformly using parsedVolume
-    if (activePresetName.includes("Connaught Place")) {
-      const inNode = nodes.findIndex(n => n.id === 'cp-in');
-      const outNode = nodes.findIndex(n => n.id === 'cp-out');
-      if (inNode !== -1) inflows[inNode] = parsedVolume;
-      if (outNode !== -1) inflows[outNode] = -parsedVolume;
-    } else if (activePresetName.includes("DU North Campus")) {
-      const inNode = nodes.findIndex(n => n.id === 'du-metro');
-      const outNode = nodes.findIndex(n => n.id === 'du-malka');
-      if (inNode !== -1) inflows[inNode] = parsedVolume;
-      if (outNode !== -1) inflows[outNode] = -parsedVolume;
-    } else if (activePresetName.includes("IGI Airport Connector")) {
-      const inNodes = ['igi-dk', 'igi-nh8', 'igi-vk'];
-      const outNodes = ['igi-t1', 'igi-t3'];
-      
-      inNodes.forEach(id => {
-        const idx = nodes.findIndex(n => n.id === id);
-        if (idx !== -1) inflows[idx] = parsedVolume / inNodes.length; 
-      });
-      outNodes.forEach(id => {
-        const idx = nodes.findIndex(n => n.id === id);
-        if (idx !== -1) inflows[idx] = -parsedVolume / outNodes.length;
-      });
-    } else {
-      inflows[0] = parsedVolume;
-      inflows[nodes.length - 1] = -parsedVolume;
+    for (let i = 0; i < nodes.length; i++) {
+      const nodeId = nodes[i].id;
+      if (inflowVolumes[nodeId] !== undefined) {
+        inflows[i] = Number(inflowVolumes[nodeId]) || 0;
+      }
+      if (outflowVolumes[nodeId] !== undefined) {
+        inflows[i] = -(Number(outflowVolumes[nodeId]) || 0); // Outflow mathematically requires negative sign
+      }
     }
 
+    // PRE-FLIGHT TOPOLOGY CHECK
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
       const isBoundaryInflow = inflows[i] > 0;
@@ -342,7 +362,7 @@ export default function TrafficDashboard() {
   return (
     <div className="flex h-screen w-full bg-slate-50 text-slate-800 font-sans overflow-hidden">
       
-      <div className="w-80 bg-white border-r border-slate-200 flex flex-col z-10 shadow-sm">
+      <div className="w-[340px] bg-white border-r border-slate-200 flex flex-col z-10 shadow-sm">
         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
@@ -352,22 +372,80 @@ export default function TrafficDashboard() {
           </div>
         </div>
         
-        <div className="p-6 flex-1 flex flex-col gap-5 overflow-y-auto">
+        <div className="p-5 flex-1 flex flex-col gap-5 overflow-y-auto">
           
           <div className="bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 flex items-center justify-between">
              <span className="text-xs font-semibold text-slate-500 uppercase">Topology</span>
-             <span className="text-xs font-bold text-slate-800">{activePresetName}</span>
+             <span className="text-xs font-bold text-slate-800 truncate max-w-[150px]" title={activePresetName}>{activePresetName}</span>
           </div>
 
-          {/* Unified Volume Controller */}
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">Total Network Volume</label>
-            <input 
-              type="number" 
-              value={networkVolume} 
-              onChange={(e) => setNetworkVolume(e.target.value === '' ? '' : Number(e.target.value))} 
-              className="w-full bg-white border border-slate-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-slate-800" 
-            />
+          {/* DYNAMIC OD MATRIX INPUTS */}
+          <div className="flex flex-col gap-3">
+            
+            {/* Inflows */}
+            {Object.keys(inflowVolumes).length > 0 && (
+              <div className="bg-emerald-50/40 p-3 rounded-lg border border-emerald-100/50">
+                <h3 className="text-[10px] font-bold text-emerald-800 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Origin Entries (Inflow)
+                </h3>
+                <div className="space-y-2">
+                  {Object.keys(inflowVolumes).map(nodeId => {
+                    const label = nodes.find(n => n.id === nodeId)?.data.label || nodeId;
+                    return (
+                      <div key={nodeId} className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-emerald-900 font-medium truncate w-40" title={label}>{label}</span>
+                        <input 
+                          type="number" 
+                          value={inflowVolumes[nodeId]} 
+                          onChange={(e) => setInflowVolumes({...inflowVolumes, [nodeId]: e.target.value === '' ? '' : Number(e.target.value)})} 
+                          className="w-20 bg-white border border-emerald-200 px-2 py-1 rounded text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800 text-right font-mono" 
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Outflows */}
+            {Object.keys(outflowVolumes).length > 0 && (
+              <div className="bg-rose-50/40 p-3 rounded-lg border border-rose-100/50">
+                <h3 className="text-[10px] font-bold text-rose-800 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Destination Exits (Outflow)
+                </h3>
+                <div className="space-y-2">
+                  {Object.keys(outflowVolumes).map(nodeId => {
+                    const label = nodes.find(n => n.id === nodeId)?.data.label || nodeId;
+                    return (
+                      <div key={nodeId} className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-rose-900 font-medium truncate w-40" title={label}>{label}</span>
+                        <input 
+                          type="number" 
+                          value={outflowVolumes[nodeId]} 
+                          onChange={(e) => setOutflowVolumes({...outflowVolumes, [nodeId]: e.target.value === '' ? '' : Number(e.target.value)})} 
+                          className="w-20 bg-white border border-rose-200 px-2 py-1 rounded text-xs focus:outline-none focus:ring-1 focus:ring-rose-500 text-slate-800 text-right font-mono" 
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {/* Live Balance Tracker */}
+            <div className={`p-3 rounded-lg border shadow-sm transition-colors ${isBalanced ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'}`}>
+              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wide mb-1">
+                <span className={isBalanced ? 'text-blue-800' : 'text-red-800'}>Mass Conservation</span>
+                <span className={isBalanced ? 'text-blue-600' : 'text-red-600'}>
+                  {isBalanced ? 'BALANCED ✓' : 'MISMATCH ✕'}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs font-mono font-medium text-slate-700">
+                <span>IN: {totalInflow}</span>
+                <span>OUT: {totalOutflow}</span>
+              </div>
+            </div>
+
           </div>
 
           <div className="flex flex-col gap-3 pt-2">
@@ -387,15 +465,6 @@ export default function TrafficDashboard() {
 
           <hr className="border-slate-100 my-2" />
 
-          <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg mb-2 shadow-inner">
-            <span className="text-xs font-bold text-amber-800 uppercase tracking-wide flex items-center gap-1 mb-1">
-              🚧 Scenario Tester
-            </span>
-            <p className="text-[11px] text-amber-700 leading-relaxed">
-              Click any road on the map to block it (simulate accidents/closures). Run the engine to see how traffic dynamically reroutes.
-            </p>
-          </div>
-
           {!isLocked && (
             <button 
               onClick={handleAddIntersection} 
@@ -405,11 +474,13 @@ export default function TrafficDashboard() {
             </button>
           )}
 
+          {/* Engine Button locks mathematically if mass is not conserved */}
           <button 
             onClick={handleOptimize} 
-            className="w-full bg-blue-600 text-white px-4 py-2.5 rounded-md hover:bg-blue-700 transition-colors font-semibold text-sm shadow-sm mt-1"
+            disabled={!isBalanced}
+            className={`w-full px-4 py-3 rounded-md transition-all font-bold text-sm shadow-sm mt-1 ${isBalanced ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
           >
-            Run Math Engine
+            {isBalanced ? 'Run Math Engine' : 'Engine Locked (Unbalanced)'}
           </button>
 
           <div className="mt-2 border-t border-slate-100 pt-4">
