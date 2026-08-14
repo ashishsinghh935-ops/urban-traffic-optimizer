@@ -30,7 +30,6 @@ export default function TrafficDashboard() {
   const [edges, setEdges] = useState<Edge[]>(customInitialEdges);
   const [status, setStatus] = useState("System Standby");
   
-  // DYNAMIC OD MATRIX STATE
   const [inflowVolumes, setInflowVolumes] = useState<Record<string, string | number>>({ 'A': 1000 });
   const [outflowVolumes, setOutflowVolumes] = useState<Record<string, string | number>>({ 'D': 1000 });
   
@@ -40,9 +39,9 @@ export default function TrafficDashboard() {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [metrics, setMetrics] = useState({ totalFlow: 0, maxFlow: 0, bottleneckCount: 0 });
 
-  // CALCULATE LIVE TOTALS
-  const totalInflow = Object.values(inflowVolumes).reduce((sum, val) => sum + (Number(val) || 0), 0) as number;
-  const totalOutflow = Object.values(outflowVolumes).reduce((sum, val) => sum + (Number(val) || 0), 0) as number;
+  // FIX: Explicitly type 'sum' as a number to satisfy Vercel's strict TypeScript build
+  const totalInflow = Object.values(inflowVolumes).reduce((sum: number, val) => sum + (Number(val) || 0), 0);
+  const totalOutflow = Object.values(outflowVolumes).reduce((sum: number, val) => sum + (Number(val) || 0), 0);
   const isBalanced = totalInflow === totalOutflow && totalInflow > 0;
 
   const onNodesChange = useCallback((changes: any) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
@@ -203,7 +202,6 @@ export default function TrafficDashboard() {
     setNodes(n);
     setEdges(e);
 
-    // AUTO-DISTRIBUTE EXACTLY 1000 UNITS ACROSS ACTIVE NODES
     const initialIn: Record<string, number> = {};
     const initialOut: Record<string, number> = {};
     const ins = n.filter(node => node.className === inflowNodeStyle);
@@ -237,7 +235,6 @@ export default function TrafficDashboard() {
     const activeEdges = edges.filter(e => !e.data?.blocked);
     if (activeEdges.length === 0) return setStatus("Error: No active roads available");
     
-    // BUILD THE DYNAMIC BOUNDARY VECTOR (b)
     const inflows = Array(nodes.length).fill(0);
     for (let i = 0; i < nodes.length; i++) {
       const nodeId = nodes[i].id;
@@ -245,11 +242,10 @@ export default function TrafficDashboard() {
         inflows[i] = Number(inflowVolumes[nodeId]) || 0;
       }
       if (outflowVolumes[nodeId] !== undefined) {
-        inflows[i] = -(Number(outflowVolumes[nodeId]) || 0); // Outflow mathematically requires negative sign
+        inflows[i] = -(Number(outflowVolumes[nodeId]) || 0);
       }
     }
 
-    // PRE-FLIGHT TOPOLOGY CHECK
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
       const isBoundaryInflow = inflows[i] > 0;
@@ -379,10 +375,8 @@ export default function TrafficDashboard() {
              <span className="text-xs font-bold text-slate-800 truncate max-w-[150px]" title={activePresetName}>{activePresetName}</span>
           </div>
 
-          {/* DYNAMIC OD MATRIX INPUTS */}
           <div className="flex flex-col gap-3">
             
-            {/* Inflows */}
             {Object.keys(inflowVolumes).length > 0 && (
               <div className="bg-emerald-50/40 p-3 rounded-lg border border-emerald-100/50">
                 <h3 className="text-[10px] font-bold text-emerald-800 uppercase tracking-wide mb-3 flex items-center gap-1.5">
@@ -407,7 +401,6 @@ export default function TrafficDashboard() {
               </div>
             )}
 
-            {/* Outflows */}
             {Object.keys(outflowVolumes).length > 0 && (
               <div className="bg-rose-50/40 p-3 rounded-lg border border-rose-100/50">
                 <h3 className="text-[10px] font-bold text-rose-800 uppercase tracking-wide mb-3 flex items-center gap-1.5">
@@ -432,7 +425,6 @@ export default function TrafficDashboard() {
               </div>
             )}
             
-            {/* Live Balance Tracker */}
             <div className={`p-3 rounded-lg border shadow-sm transition-colors ${isBalanced ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'}`}>
               <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wide mb-1">
                 <span className={isBalanced ? 'text-blue-800' : 'text-red-800'}>Mass Conservation</span>
@@ -474,7 +466,6 @@ export default function TrafficDashboard() {
             </button>
           )}
 
-          {/* Engine Button locks mathematically if mass is not conserved */}
           <button 
             onClick={handleOptimize} 
             disabled={!isBalanced}
