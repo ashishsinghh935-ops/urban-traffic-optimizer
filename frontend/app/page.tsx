@@ -6,7 +6,70 @@ import { useRouter } from 'next/navigation';
 import ReactFlow, { Background, Controls, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge, Connection } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-// DYNAMIC STYLES: Nodes will now change color automatically based on their mathematical b-vector value
+// ==========================================
+// NEW HUD GAUGE COMPONENT (SVG TELEMETRY)
+// ==========================================
+const HUDGauge = ({ value, max, title, subtitle, inverseColors = false }: { value: number, max: number, title: string, subtitle: string, inverseColors?: boolean }) => {
+  const radius = 38;
+  const circumference = 2 * Math.PI * radius;
+  const safeMax = max > 0 ? max : 1;
+  const rawPercent = (value / safeMax) * 100;
+  const percent = Math.min(100, Math.max(0, rawPercent));
+  const offset = circumference - (percent / 100) * circumference;
+  
+  let colorClass = "text-blue-500";
+  let strokeClass = "stroke-blue-500";
+  
+  if (inverseColors) {
+    // For stress points: 0 is good (emerald), >0 is bad (red)
+    if (value === 0) {
+      colorClass = "text-emerald-500";
+      strokeClass = "stroke-emerald-500";
+    } else {
+      colorClass = "text-rose-500";
+      strokeClass = "stroke-rose-500";
+    }
+  } else {
+    // For capacity: <80% is good, >80% is warning, >100% is critical
+    if (rawPercent >= 100) {
+      colorClass = "text-rose-500";
+      strokeClass = "stroke-rose-500";
+    } else if (rawPercent >= 80) {
+      colorClass = "text-amber-500";
+      strokeClass = "stroke-amber-500";
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-inner w-full">
+      <div className="relative flex items-center justify-center">
+        <svg className="transform -rotate-90 w-28 h-28">
+          <circle cx="56" cy="56" r={radius} stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-200" />
+          <circle 
+            cx="56" 
+            cy="56" 
+            r={radius} 
+            stroke="currentColor" 
+            strokeWidth="8" 
+            fill="transparent" 
+            strokeDasharray={circumference} 
+            strokeDashoffset={offset} 
+            strokeLinecap="round"
+            className={`${strokeClass} transition-all duration-1000 ease-out`} 
+          />
+        </svg>
+        <div className="absolute flex flex-col items-center justify-center">
+          <span className={`text-2xl font-light tracking-tight ${colorClass}`}>{value}</span>
+        </div>
+      </div>
+      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-3">{title}</p>
+      <p className="text-[9px] text-slate-400 font-medium tracking-wide mt-0.5">{subtitle}</p>
+    </div>
+  );
+};
+
+
+// DYNAMIC STYLES
 const baseNodeStyle = 'rounded-full shadow-md font-bold px-5 py-2.5 text-[11px] uppercase tracking-wider transition-all border-2 ';
 const defaultNodeStyle = baseNodeStyle + 'bg-white border-slate-200 text-slate-700 hover:shadow-lg hover:border-blue-400';
 const sourceNodeStyle = baseNodeStyle + 'bg-slate-900 border-emerald-400 text-emerald-50 ring-4 ring-emerald-400/20';
@@ -32,7 +95,6 @@ export default function TrafficDashboard() {
   const [edges, setEdges] = useState<Edge[]>(customInitialEdges);
   const [status, setStatus] = useState("System Standby");
   
-  // THE NEW MATH MODEL: A single boundary vector map (b-vector) for all nodes
   const [nodeBoundaries, setNodeBoundaries] = useState<Record<string, string | number>>({
     'A': 1000, 'B': 0, 'C': 0, 'D': -1000
   });
@@ -43,7 +105,6 @@ export default function TrafficDashboard() {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [metrics, setMetrics] = useState({ totalFlow: 0, maxFlow: 0, bottleneckCount: 0 });
 
-  // LIVE PHYSICS VALIDATION: Sum of all b-vector elements must equal exactly 0
   const totalPositive = Object.values(nodeBoundaries).reduce((sum: number, val) => sum + (Number(val) > 0 ? Number(val) : 0), 0);
   const totalNegative = Object.values(nodeBoundaries).reduce((sum: number, val) => sum + (Number(val) < 0 ? Number(val) : 0), 0);
   const netBoundary = totalPositive + totalNegative; 
@@ -76,7 +137,6 @@ export default function TrafficDashboard() {
     }));
   }, []);
 
-  // REACTIVE STYLING: Automatically color the nodes on the canvas based on their mathematical value
   useEffect(() => {
     setNodes(currentNodes => currentNodes.map(n => {
       const val = Number(nodeBoundaries[n.id]) || 0;
@@ -228,7 +288,7 @@ export default function TrafficDashboard() {
         else if (['igi-t1', 'igi-t3'].includes(node.id)) initialBounds[node.id] = -500;
         else initialBounds[node.id] = 0;
       });
-      initialBounds['igi-dk'] = 334; // To exactly balance 1000
+      initialBounds['igi-dk'] = 334; 
     }
     else {
       setActivePresetName("Custom Network");
@@ -251,10 +311,8 @@ export default function TrafficDashboard() {
     const activeEdges = edges.filter(e => !e.data?.blocked);
     if (activeEdges.length === 0) return setStatus("Error: No active roads available");
     
-    // The exact array we send to the linear algebra solver
     const bVector = nodes.map(n => Number(nodeBoundaries[n.id]) || 0);
 
-    // DYNAMIC TOPOLOGY VALIDATION
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
       const bVal = bVector[i];
@@ -339,7 +397,7 @@ export default function TrafficDashboard() {
 
         setStatus(`Optimization Complete`);
         setEdges(updatedEdges);
-        setMetrics({ totalFlow: total, maxFlow: max, bottleneckCount: bCount });
+        setMetrics({ totalFlow: Math.round(total), maxFlow: Math.round(max), bottleneckCount: bCount });
         setShowAnalysis(true);
         
         const getNodeLabel = (id: string) => nodes.find(n => n.id === id)?.data.label || id;
@@ -358,6 +416,9 @@ export default function TrafficDashboard() {
       setStatus("Error: Connection Failed");
     }
   };
+
+  // Safe variables for gauges
+  const activeRoadsCount = edges.filter(e => !e.data?.blocked).length;
 
   return (
     <div className="flex h-screen w-full bg-slate-50 text-slate-800 font-sans overflow-hidden">
@@ -487,42 +548,53 @@ export default function TrafficDashboard() {
           <Controls className="bg-white border-slate-200 fill-slate-600 shadow-sm" showInteractive={false} />
         </ReactFlow>
 
-        <div className={`absolute top-0 right-0 h-full w-80 bg-white border-l border-slate-200 shadow-xl transform transition-transform duration-300 ease-in-out flex flex-col ${showAnalysis ? 'translate-x-0' : 'translate-x-full'}`}>
-          <div className="p-6 flex-1">
+        <div className={`absolute top-0 right-0 h-full w-[360px] bg-white border-l border-slate-200 shadow-2xl transform transition-transform duration-500 ease-in-out flex flex-col ${showAnalysis ? 'translate-x-0' : 'translate-x-full'}`}>
+          <div className="p-6 flex-1 overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
-              <h2 className="text-sm font-bold text-slate-800 tracking-wide">Analysis Results</h2>
-              <button onClick={() => setShowAnalysis(false)} className="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+              <h2 className="text-sm font-bold text-slate-800 tracking-wide uppercase">Telemetry HUD</h2>
+              <button onClick={() => setShowAnalysis(false)} className="text-slate-400 hover:text-slate-600 font-bold transition-colors">✕</button>
             </div>
             
+            {/* HUD GAUGE DASHBOARD */}
             <div className="space-y-6">
-              <div>
-                <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">Total Network Load</p>
-                <p className="text-3xl text-slate-800 font-light">{metrics.totalFlow} <span className="text-sm text-slate-500 font-normal">units/hr</span></p>
+              
+              <div className="bg-slate-800 rounded-xl p-5 shadow-inner border border-slate-700">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Total System Flow</p>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-4xl text-white font-light tracking-tight">{metrics.totalFlow}</p>
+                  <span className="text-xs text-slate-400 font-mono">units/hr</span>
+                </div>
               </div>
               
-              <div>
-                <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">Peak Bottleneck Volume</p>
-                <p className="text-3xl text-blue-600 font-light">{metrics.maxFlow} <span className="text-sm text-slate-500 font-normal">units/hr</span></p>
+              <div className="grid grid-cols-2 gap-4">
+                <HUDGauge 
+                  value={metrics.maxFlow} 
+                  max={capacityThreshold} 
+                  title="Peak Volume" 
+                  subtitle="vs. Capacity Limit" 
+                />
+                
+                <HUDGauge 
+                  value={metrics.bottleneckCount} 
+                  max={activeRoadsCount > 0 ? activeRoadsCount : 1} 
+                  title="Stress Points" 
+                  subtitle="Active Bottlenecks" 
+                  inverseColors={true}
+                />
               </div>
 
-              <div>
-                <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1">Active Stress Points</p>
-                <p className={`text-3xl font-light ${metrics.bottleneckCount > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
-                  {metrics.bottleneckCount}
-                </p>
-              </div>
             </div>
           </div>
           
           <div className="p-6 border-t border-slate-100 bg-slate-50">
-            <p className="text-xs text-slate-500 mb-3 leading-relaxed">
-              Engine utilized least-squares solver to balance Ax = b across active vectors.
+            <p className="text-[11px] text-slate-500 mb-4 leading-relaxed font-medium">
+              Data computed via Least-Squares SVD to enforce physical mass conservation ($Ax = b$).
             </p>
             <Link 
               href="/the-math"
-              className="w-full block text-center bg-slate-800 text-white font-medium text-sm py-2.5 px-4 rounded-md hover:bg-slate-900 transition-colors shadow-sm"
+              className="w-full block text-center bg-slate-800 text-white font-bold text-sm py-3 px-4 rounded-lg hover:bg-slate-900 hover:shadow-md transition-all"
             >
-              View Live Math Breakdown &rarr;
+              View Mathematical Breakdown &rarr;
             </Link>
           </div>
         </div>
