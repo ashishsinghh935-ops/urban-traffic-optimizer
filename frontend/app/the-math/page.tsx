@@ -30,15 +30,12 @@ export default function TheMath() {
 
     let csvContent = "data:text/csv;charset=utf-8,";
     
-    // Title Section
     csvContent += "URBAN TRAFFIC OPTIMIZER - SYSTEM EXPORT\n\n";
 
-    // 1. Augmented Matrix Headers
     csvContent += "AUGMENTED MATRIX [ A | b ]\n";
     const headers = ["Intersection", ...data.edgeLabels, "Boundary (b)"];
     csvContent += headers.map(h => `"${h}"`).join(",") + "\n";
     
-    // 2. Matrix Rows
     data.matrix.forEach((row, idx) => {
       const rowData = [
         `"${data.nodeLabels[idx]}"`,
@@ -50,14 +47,12 @@ export default function TheMath() {
     
     csvContent += "\n";
     
-    // 3. Flow Vector (x) Result
     csvContent += "OPTIMIZED FLOW VECTOR (x)\n";
     csvContent += "Edge,Calculated Flow Units\n";
     data.xVector.forEach((val, idx) => {
       csvContent += `"${data.edgeLabels[idx]}",${Math.abs(Math.round(val))}\n`;
     });
     
-    // Trigger the file download
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -100,7 +95,7 @@ export default function TheMath() {
             </div>
           </div>
           <p className="text-slate-300 text-sm leading-relaxed max-w-3xl">
-            This tool does not rely on simple heuristics. It treats the city grid as a vector space, translating intersections into systems of linear equations to calculate perfect flow conservation. Here is the mathematical breakdown of your specific network.
+            This tool computes urban traffic as a vector space. By translating physical intersections into a unified system of linear equations ($Ax = b$), we mathematically enforce mass conservation to determine the optimal flow configuration.
           </p>
         </div>
 
@@ -114,7 +109,7 @@ export default function TheMath() {
               <h2 className="text-xl font-bold text-slate-900">Your Network Topography</h2>
             </div>
             <p className="text-slate-600 mb-4 text-sm leading-relaxed">
-              This is the visual graph you built. To a computer, this is just a collection of connected nodes. We must translate this visual topology into mathematical matrices.
+              This is the visual graph. To a computer, this is merely a collection of topological nodes and directed edges. The first step is translating this geometry into algebraic matrices.
             </p>
             <div className="h-72 w-full border border-slate-200 rounded-xl overflow-hidden bg-slate-50 relative shadow-inner">
               <ReactFlow 
@@ -137,12 +132,12 @@ export default function TheMath() {
               <h2 className="text-xl font-bold text-slate-900">Extracting the Incidence Matrix (A)</h2>
             </div>
             <p className="text-slate-600 mb-4 text-sm leading-relaxed">
-              First, the backend mathematically flattens your map into an <strong>Incidence Matrix (A)</strong>. Every row is an intersection, and every column is a road (edge). This matrix purely describes <em>direction</em> and <em>connectivity</em>.
+              The graph is flattened into an <strong>Incidence Matrix (A)</strong>. Rows represent intersections; columns represent roads. This captures pure directional connectivity independently of traffic volume.
             </p>
             <ul className="list-disc list-inside text-sm text-slate-600 space-y-2 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-100">
-              <li><strong className="text-blue-600">1</strong>: The road <strong>originates</strong> here (traffic leaves the node).</li>
-              <li><strong className="text-rose-600">-1</strong>: The road <strong>terminates</strong> here (traffic enters the node).</li>
-              <li><strong className="text-slate-400">0</strong>: The road and intersection are not connected.</li>
+              <li><strong className="text-blue-600">1</strong>: Vector originates here (traffic leaves the node).</li>
+              <li><strong className="text-rose-600">-1</strong>: Vector terminates here (traffic enters the node).</li>
+              <li><strong className="text-slate-400">0</strong>: No structural connection exists.</li>
             </ul>
             
             <div className="overflow-x-auto border border-slate-200 rounded-lg shadow-sm">
@@ -190,11 +185,13 @@ export default function TheMath() {
               <h2 className="text-xl font-bold text-slate-900">Formulating the Augmented Matrix [ A | b ]</h2>
             </div>
             <p className="text-slate-600 mb-4 text-sm leading-relaxed">
-              We now introduce the <strong>Boundary Vector (b)</strong>. This represents the external constraints—how many cars are entering the grid from outside, and how many are leaving. By appending this vector to our Incidence Matrix, we create an <strong>Augmented Matrix</strong> representing the linear system <strong>Ax = b</strong>.
+              We now append the <strong>Unified Boundary Vector (b)</strong>. This mathematically enforces the physical laws of mass conservation across the grid. Every node is assigned a net boundary value constraint:
             </p>
-            <div className="bg-indigo-50 border border-indigo-100 text-indigo-900 text-sm p-4 rounded-lg mb-6">
-              <strong>The Goal:</strong> To conserve mass, the sum of all internal traffic flows entering and leaving an intersection must perfectly equal the external boundary condition for that intersection.
-            </div>
+            <ul className="list-disc list-inside text-sm text-slate-600 space-y-2 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-100">
+              <li><strong className="text-emerald-600">+v (Source)</strong>: The intersection is generating net new traffic.</li>
+              <li><strong className="text-rose-600">-v (Sink)</strong>: The intersection is absorbing net traffic.</li>
+              <li><strong className="text-slate-500">0 (Pass-Through)</strong>: Strict conservation. Everything entering must leave.</li>
+            </ul>
 
             <div className="overflow-x-auto border border-slate-200 rounded-lg shadow-sm">
               <table className="w-full text-xs text-center border-collapse bg-white whitespace-nowrap">
@@ -202,26 +199,33 @@ export default function TheMath() {
                   <tr>
                     <th className="p-3 border-r border-slate-200 text-left sticky left-0 bg-slate-50 z-10">Intersections</th>
                     <th colSpan={data.edgeLabels.length} className="p-3 border-r-2 border-slate-800 bg-slate-100 uppercase tracking-wide">Matrix A (Internal Roads)</th>
-                    <th className="p-3 bg-rose-50 text-rose-800 uppercase tracking-wide">Vector b (External Flow)</th>
+                    <th className="p-3 bg-indigo-50 text-indigo-800 uppercase tracking-wide">Vector b (Boundary)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.matrix.map((row, rIdx) => (
-                    <tr key={rIdx} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
-                      <td className="p-3 border-r border-slate-200 font-bold text-slate-700 text-left sticky left-0 bg-white z-10">
-                        {data.nodeLabels[rIdx]}
-                      </td>
-                      {row.map((val, cIdx) => (
-                        <td key={cIdx} className={`p-3 border-r border-slate-100 font-mono ${val !== 0 ? 'font-bold text-slate-800' : 'text-slate-300'}`}>
-                          {val}
+                  {data.matrix.map((row, rIdx) => {
+                    const bVal = data.bVector[rIdx];
+                    let bClass = 'bg-slate-50 text-slate-400';
+                    if (bVal > 0) bClass = 'bg-emerald-50 text-emerald-700 font-bold';
+                    if (bVal < 0) bClass = 'bg-rose-50 text-rose-700 font-bold';
+
+                    return (
+                      <tr key={rIdx} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
+                        <td className="p-3 border-r border-slate-200 font-bold text-slate-700 text-left sticky left-0 bg-white z-10">
+                          {data.nodeLabels[rIdx]}
                         </td>
-                      ))}
-                      {/* Appended b Vector Column */}
-                      <td className="p-3 border-l-2 border-slate-800 bg-rose-50 font-mono font-bold text-rose-700">
-                        {data.bVector[rIdx]}
-                      </td>
-                    </tr>
-                  ))}
+                        {row.map((val, cIdx) => (
+                          <td key={cIdx} className={`p-3 border-r border-slate-100 font-mono ${val !== 0 ? 'font-bold text-slate-800' : 'text-slate-300'}`}>
+                            {val}
+                          </td>
+                        ))}
+                        {/* Appended Dynamic b Vector Column */}
+                        <td className={`p-3 border-l-2 border-slate-800 font-mono ${bClass}`}>
+                          {bVal}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -231,22 +235,22 @@ export default function TheMath() {
           <section>
             <div className="flex items-center gap-3 mb-4 border-b border-slate-100 pb-2">
               <span className="bg-emerald-600 text-white font-bold h-8 w-8 flex items-center justify-center rounded-full text-sm">3</span>
-              <h2 className="text-xl font-bold text-slate-900">Solving the Normal Equations (Least Squares)</h2>
+              <h2 className="text-xl font-bold text-slate-900">Solving via Singular Value Decomposition (SVD)</h2>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-6">
               <div>
                 <p className="text-slate-600 mb-4 text-sm leading-relaxed">
-                  In a simple math problem, we would just row-reduce the Augmented Matrix to find the flow (x). However, real-world traffic networks (like yours) are often <strong>overdetermined</strong> or contain loops. This means they have free variables (a non-trivial null space), and a standard matrix inversion will fail.
+                  Real-world urban grids are highly overdetermined and contain cyclic loops (a non-trivial null space), causing standard matrix inversion ($A^{-1}$) to fail.
                 </p>
                 <p className="text-slate-600 mb-4 text-sm leading-relaxed">
-                  To solve this, our backend calculates the <strong>Moore-Penrose Pseudo-inverse</strong> using Singular Value Decomposition (SVD). This relies on the normal equations:
+                  The backend utilizes the <strong>Moore-Penrose Pseudo-inverse</strong> to solve the normal equations:
                 </p>
                 <div className="bg-slate-800 text-white font-mono p-4 rounded-lg text-center text-lg shadow-inner mb-4">
                   A<sup>T</sup> A x = A<sup>T</sup> b
                 </div>
                 <p className="text-slate-600 text-sm leading-relaxed">
-                  This finds the vector <strong>(x)</strong> that perfectly minimizes the Euclidean norm ||Ax - b||. It calculates the mathematically optimal distribution of vehicles that prevents bottlenecks while perfectly conserving flow.
+                  This computes the optimal vector <strong>(x)</strong> that perfectly minimizes the Euclidean norm $||Ax - b||^2$. It mathematically mimics Wardrop's first principle of traffic equilibrium, distributing load to minimize systemic network stress.
                 </p>
               </div>
 
@@ -257,7 +261,7 @@ export default function TheMath() {
                   <span className="text-xs bg-emerald-200 text-emerald-800 px-2 py-1 rounded font-semibold">Solution</span>
                 </div>
                 <div className="bg-white p-3 border-b border-emerald-100 text-xs text-slate-500">
-                  The computed traffic volume strictly required on each edge to maintain stability.
+                  The computed traffic volume strictly required on each edge to satisfy $Ax=b$.
                 </div>
                 <div className="overflow-y-auto flex-1">
                   <table className="w-full text-sm text-center border-collapse">
