@@ -6,15 +6,17 @@ import { useRouter } from 'next/navigation';
 import ReactFlow, { Background, Controls, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge, Connection } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-const defaultNodeStyle = 'bg-white border-2 border-slate-200 rounded-full shadow-sm text-slate-700 font-bold px-5 py-2.5 text-[11px] uppercase tracking-wider transition-all hover:shadow-md hover:border-blue-400';
-const inflowNodeStyle = 'bg-slate-900 border-2 border-emerald-400 rounded-full shadow-md text-emerald-50 font-bold px-5 py-2.5 text-[11px] uppercase tracking-wider ring-4 ring-emerald-400/20';
-const outflowNodeStyle = 'bg-slate-900 border-2 border-rose-400 rounded-full shadow-md text-rose-50 font-bold px-5 py-2.5 text-[11px] uppercase tracking-wider ring-4 ring-rose-400/20';
+// DYNAMIC STYLES: Nodes will now change color automatically based on their mathematical b-vector value
+const baseNodeStyle = 'rounded-full shadow-md font-bold px-5 py-2.5 text-[11px] uppercase tracking-wider transition-all border-2 ';
+const defaultNodeStyle = baseNodeStyle + 'bg-white border-slate-200 text-slate-700 hover:shadow-lg hover:border-blue-400';
+const sourceNodeStyle = baseNodeStyle + 'bg-slate-900 border-emerald-400 text-emerald-50 ring-4 ring-emerald-400/20';
+const sinkNodeStyle = baseNodeStyle + 'bg-slate-900 border-rose-400 text-rose-50 ring-4 ring-rose-400/20';
 
 const customInitialNodes: Node[] = [
-  { id: 'A', position: { x: 150, y: 100 }, data: { label: 'Node A (Inflow)' }, className: inflowNodeStyle },
+  { id: 'A', position: { x: 150, y: 100 }, data: { label: 'Node A' }, className: defaultNodeStyle },
   { id: 'B', position: { x: 450, y: 100 }, data: { label: 'Node B' }, className: defaultNodeStyle },
   { id: 'C', position: { x: 150, y: 300 }, data: { label: 'Node C' }, className: defaultNodeStyle },
-  { id: 'D', position: { x: 450, y: 300 }, data: { label: 'Node D (Outflow)' }, className: outflowNodeStyle },
+  { id: 'D', position: { x: 450, y: 300 }, data: { label: 'Node D' }, className: defaultNodeStyle },
 ];
 
 const customInitialEdges: Edge[] = [
@@ -30,8 +32,10 @@ export default function TrafficDashboard() {
   const [edges, setEdges] = useState<Edge[]>(customInitialEdges);
   const [status, setStatus] = useState("System Standby");
   
-  const [inflowVolumes, setInflowVolumes] = useState<Record<string, string | number>>({ 'A': 1000 });
-  const [outflowVolumes, setOutflowVolumes] = useState<Record<string, string | number>>({ 'D': 1000 });
+  // THE NEW MATH MODEL: A single boundary vector map (b-vector) for all nodes
+  const [nodeBoundaries, setNodeBoundaries] = useState<Record<string, string | number>>({
+    'A': 1000, 'B': 0, 'C': 0, 'D': -1000
+  });
   
   const [capacityThreshold, setCapacityThreshold] = useState(80);
   const [isLocked, setIsLocked] = useState(false);
@@ -39,10 +43,11 @@ export default function TrafficDashboard() {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [metrics, setMetrics] = useState({ totalFlow: 0, maxFlow: 0, bottleneckCount: 0 });
 
-  // FIX: Explicitly type 'sum' as a number to satisfy Vercel's strict TypeScript build
-  const totalInflow = Object.values(inflowVolumes).reduce((sum: number, val) => sum + (Number(val) || 0), 0);
-  const totalOutflow = Object.values(outflowVolumes).reduce((sum: number, val) => sum + (Number(val) || 0), 0);
-  const isBalanced = totalInflow === totalOutflow && totalInflow > 0;
+  // LIVE PHYSICS VALIDATION: Sum of all b-vector elements must equal exactly 0
+  const totalPositive = Object.values(nodeBoundaries).reduce((sum: number, val) => sum + (Number(val) > 0 ? Number(val) : 0), 0);
+  const totalNegative = Object.values(nodeBoundaries).reduce((sum: number, val) => sum + (Number(val) < 0 ? Number(val) : 0), 0);
+  const netBoundary = totalPositive + totalNegative; 
+  const isBalanced = netBoundary === 0 && totalPositive > 0;
 
   const onNodesChange = useCallback((changes: any) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
   const onEdgesChange = useCallback((changes: any) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
@@ -71,6 +76,21 @@ export default function TrafficDashboard() {
     }));
   }, []);
 
+  // REACTIVE STYLING: Automatically color the nodes on the canvas based on their mathematical value
+  useEffect(() => {
+    setNodes(currentNodes => currentNodes.map(n => {
+      const val = Number(nodeBoundaries[n.id]) || 0;
+      let targetClass = defaultNodeStyle;
+      if (val > 0) targetClass = sourceNodeStyle;
+      if (val < 0) targetClass = sinkNodeStyle;
+      
+      if (n.className !== targetClass) {
+        return { ...n, className: targetClass };
+      }
+      return n;
+    }));
+  }, [nodeBoundaries]);
+
   useEffect(() => {
     const pendingPreset = sessionStorage.getItem('pendingPreset');
     if (pendingPreset) {
@@ -88,6 +108,7 @@ export default function TrafficDashboard() {
       className: defaultNodeStyle
     };
     setNodes((nds) => [...nds, newNode]);
+    setNodeBoundaries(prev => ({ ...prev, [nextId]: 0 }));
   };
 
   const loadPreset = (presetId: string) => {
@@ -95,15 +116,16 @@ export default function TrafficDashboard() {
     
     let n: Node[] = [];
     let e: Edge[] = [];
+    let initialBounds: Record<string, number> = {};
 
     if (presetId === 'cp') {
       setActivePresetName("Connaught Place (Locked)");
       setIsLocked(true);
       n = [
-        { id: 'cp-in', position: { x: 500, y: 50 }, data: { label: 'Minto Rd (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-in', position: { x: 500, y: 50 }, data: { label: 'Minto Rd' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'cp-oc-ne', position: { x: 800, y: 200 }, data: { label: 'Barakhamba Rd' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'cp-oc-se', position: { x: 800, y: 500 }, data: { label: 'K.G. Marg' }, className: defaultNodeStyle, draggable: false, selectable: false },
-        { id: 'cp-out', position: { x: 500, y: 650 }, data: { label: 'Janpath (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
+        { id: 'cp-out', position: { x: 500, y: 650 }, data: { label: 'Janpath' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'cp-oc-sw', position: { x: 200, y: 500 }, data: { label: 'Sansad Marg' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'cp-oc-nw', position: { x: 200, y: 200 }, data: { label: 'Panchkuian Rd' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'cp-ic-n', position: { x: 500, y: 200 }, data: { label: 'Inner Circle (N)' }, className: defaultNodeStyle, draggable: false, selectable: false },
@@ -134,12 +156,17 @@ export default function TrafficDashboard() {
         { id: 'e-c-w', source: 'cp-ic-w', target: 'cp-center', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-c-e', source: 'cp-center', target: 'cp-ic-e', animated: true, data: { blocked: false }, style: { stroke: '#94a3b8', strokeWidth: 2 } },
       ];
+      n.forEach(node => {
+        if (node.id === 'cp-in') initialBounds[node.id] = 1000;
+        else if (node.id === 'cp-out') initialBounds[node.id] = -1000;
+        else initialBounds[node.id] = 0;
+      });
     } 
     else if (presetId === 'du-north') {
       setActivePresetName("DU North Campus (Locked)");
       setIsLocked(true);
       n = [
-        { id: 'du-metro', position: { x: 500, y: 50 }, data: { label: 'Vishwavidyalaya Metro (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
+        { id: 'du-metro', position: { x: 500, y: 50 }, data: { label: 'Vishwavidyalaya Metro' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'du-khalsa', position: { x: 300, y: 150 }, data: { label: 'GTB Rd / SGTB Khalsa' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'du-arts', position: { x: 700, y: 150 }, data: { label: 'Chatra Marg / Arts Faculty' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'du-patel', position: { x: 200, y: 300 }, data: { label: 'Patel Chest / SRCC' }, className: defaultNodeStyle, draggable: false, selectable: false },
@@ -147,7 +174,7 @@ export default function TrafficDashboard() {
         { id: 'du-cic', position: { x: 900, y: 300 }, data: { label: 'Cluster Innovation Centre' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'du-ramjas', position: { x: 400, y: 450 }, data: { label: 'Sudhir Bose Marg / Ramjas' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'du-kamla', position: { x: 800, y: 450 }, data: { label: 'Bungalow Rd / Kamla Nagar' }, className: defaultNodeStyle, draggable: false, selectable: false },
-        { id: 'du-malka', position: { x: 500, y: 600 }, data: { label: 'Malka Ganj Chowk (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
+        { id: 'du-malka', position: { x: 500, y: 600 }, data: { label: 'Malka Ganj Chowk' }, className: defaultNodeStyle, draggable: false, selectable: false },
       ];
       e = [
         { id: 'e-m-k', source: 'du-metro', target: 'du-khalsa', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
@@ -164,20 +191,25 @@ export default function TrafficDashboard() {
         { id: 'e-r-m', source: 'du-ramjas', target: 'du-malka', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-k-m', source: 'du-kamla', target: 'du-malka', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
       ];
+      n.forEach(node => {
+        if (node.id === 'du-metro') initialBounds[node.id] = 1000;
+        else if (node.id === 'du-malka') initialBounds[node.id] = -1000;
+        else initialBounds[node.id] = 0;
+      });
     }
     else if (presetId === 'igi-connector') {
       setActivePresetName("IGI Airport Connector (Locked)");
       setIsLocked(true);
       n = [
-        { id: 'igi-dk', position: { x: 800, y: 100 }, data: { label: 'Dhaula Kuan (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
-        { id: 'igi-nh8', position: { x: 800, y: 600 }, data: { label: 'NH-48 Gurgaon (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
-        { id: 'igi-vk', position: { x: 500, y: 700 }, data: { label: 'Vasant Kunj (In)' }, className: inflowNodeStyle, draggable: false, selectable: false },
+        { id: 'igi-dk', position: { x: 800, y: 100 }, data: { label: 'Dhaula Kuan' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'igi-nh8', position: { x: 800, y: 600 }, data: { label: 'NH-48 Gurgaon' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'igi-vk', position: { x: 500, y: 700 }, data: { label: 'Vasant Kunj' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'igi-rtr', position: { x: 500, y: 150 }, data: { label: 'RTR Flyover' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'igi-mahipalpur', position: { x: 500, y: 450 }, data: { label: 'Mahipalpur Junction' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'igi-tunnel', position: { x: 300, y: 250 }, data: { label: 'Airport Express Tunnel' }, className: defaultNodeStyle, draggable: false, selectable: false },
         { id: 'igi-aerocity', position: { x: 300, y: 450 }, data: { label: 'Aerocity Hub' }, className: defaultNodeStyle, draggable: false, selectable: false },
-        { id: 'igi-t1', position: { x: 50, y: 150 }, data: { label: 'Terminal 1 (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
-        { id: 'igi-t3', position: { x: 50, y: 450 }, data: { label: 'Terminal 3 (Out)' }, className: outflowNodeStyle, draggable: false, selectable: false },
+        { id: 'igi-t1', position: { x: 50, y: 150 }, data: { label: 'Terminal 1' }, className: defaultNodeStyle, draggable: false, selectable: false },
+        { id: 'igi-t3', position: { x: 50, y: 450 }, data: { label: 'Terminal 3' }, className: defaultNodeStyle, draggable: false, selectable: false },
       ];
       e = [
         { id: 'e-dk-rtr', source: 'igi-dk', target: 'igi-rtr', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
@@ -191,80 +223,52 @@ export default function TrafficDashboard() {
         { id: 'e-aero-t3', source: 'igi-aerocity', target: 'igi-t3', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
         { id: 'e-aero-t1', source: 'igi-aerocity', target: 'igi-t1', animated: true, data: { blocked: false }, type: 'smoothstep', style: { stroke: '#94a3b8', strokeWidth: 2 } },
       ];
+      n.forEach(node => {
+        if (['igi-dk', 'igi-nh8', 'igi-vk'].includes(node.id)) initialBounds[node.id] = 333;
+        else if (['igi-t1', 'igi-t3'].includes(node.id)) initialBounds[node.id] = -500;
+        else initialBounds[node.id] = 0;
+      });
+      initialBounds['igi-dk'] = 334; // To exactly balance 1000
     }
     else {
       setActivePresetName("Custom Network");
       setIsLocked(false);
       n = customInitialNodes.map(node => ({ ...node, draggable: true, selectable: true }));
       e = customInitialEdges;
+      n.forEach(node => {
+        if (node.id === 'A') initialBounds[node.id] = 1000;
+        else if (node.id === 'D') initialBounds[node.id] = -1000;
+        else initialBounds[node.id] = 0;
+      });
     }
 
     setNodes(n);
     setEdges(e);
-
-    const initialIn: Record<string, number> = {};
-    const initialOut: Record<string, number> = {};
-    const ins = n.filter(node => node.className === inflowNodeStyle);
-    const outs = n.filter(node => node.className === outflowNodeStyle);
-    
-    let inSum = 0;
-    ins.forEach((node, i) => {
-      if (i === ins.length - 1) initialIn[node.id] = 1000 - inSum;
-      else {
-        const val = Math.floor(1000 / ins.length);
-        initialIn[node.id] = val;
-        inSum += val;
-      }
-    });
-
-    let outSum = 0;
-    outs.forEach((node, i) => {
-      if (i === outs.length - 1) initialOut[node.id] = 1000 - outSum;
-      else {
-        const val = Math.floor(1000 / outs.length);
-        initialOut[node.id] = val;
-        outSum += val;
-      }
-    });
-
-    setInflowVolumes(initialIn);
-    setOutflowVolumes(initialOut);
+    setNodeBoundaries(initialBounds);
   };
 
   const handleOptimize = async () => {
     const activeEdges = edges.filter(e => !e.data?.blocked);
     if (activeEdges.length === 0) return setStatus("Error: No active roads available");
     
-    const inflows = Array(nodes.length).fill(0);
-    for (let i = 0; i < nodes.length; i++) {
-      const nodeId = nodes[i].id;
-      if (inflowVolumes[nodeId] !== undefined) {
-        inflows[i] = Number(inflowVolumes[nodeId]) || 0;
-      }
-      if (outflowVolumes[nodeId] !== undefined) {
-        inflows[i] = -(Number(outflowVolumes[nodeId]) || 0);
-      }
-    }
+    // The exact array we send to the linear algebra solver
+    const bVector = nodes.map(n => Number(nodeBoundaries[n.id]) || 0);
 
+    // DYNAMIC TOPOLOGY VALIDATION
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
-      const isBoundaryInflow = inflows[i] > 0;
-      const isBoundaryOutflow = inflows[i] < 0;
+      const bVal = bVector[i];
       
       const hasIncoming = activeEdges.some(e => e.target === node.id);
       const hasOutgoing = activeEdges.some(e => e.source === node.id);
 
-      if (!isBoundaryOutflow && hasIncoming && !hasOutgoing) {
-        setStatus(`Warning: Traffic trapped at ${node.data.label}! Need outflow path.`);
-        return;
-      }
-      if (!isBoundaryInflow && hasOutgoing && !hasIncoming) {
-        setStatus(`Warning: Vacuum at ${node.data.label}! Needs inflow path.`);
-        return;
-      }
-      if (isBoundaryInflow && !hasOutgoing) {
-        setStatus(`Warning: Inflow completely blocked at ${node.data.label}!`);
-        return;
+      if (bVal === 0) {
+        if (hasIncoming && !hasOutgoing) return setStatus(`Warning: Traffic trapped at ${node.data.label}! Set a negative boundary to absorb it.`);
+        if (hasOutgoing && !hasIncoming) return setStatus(`Warning: Vacuum at ${node.data.label}! Set a positive boundary to generate it.`);
+      } else if (bVal > 0 && !hasOutgoing) {
+        return setStatus(`Warning: Source completely blocked at ${node.data.label}!`);
+      } else if (bVal < 0 && !hasIncoming) {
+        return setStatus(`Warning: Sink completely blocked at ${node.data.label}!`);
       }
     }
 
@@ -283,7 +287,7 @@ export default function TrafficDashboard() {
       const response = await fetch('https://urban-traffic-optimizer.onrender.com/optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ incidence_matrix: matrix, external_inflows: inflows })
+        body: JSON.stringify({ incidence_matrix: matrix, external_inflows: bVector })
       });
       
       const data = await response.json();
@@ -342,7 +346,7 @@ export default function TrafficDashboard() {
 
         sessionStorage.setItem('liveMathData', JSON.stringify({
           matrix: matrix,
-          bVector: inflows,
+          bVector: bVector,
           xVector: data.optimized_flows,
           nodeLabels: nodes.map(n => n.data.label),
           edgeLabels: activeEdges.map(e => `${getNodeLabel(e.source)} → ${getNodeLabel(e.target)}`),
@@ -376,54 +380,26 @@ export default function TrafficDashboard() {
           </div>
 
           <div className="flex flex-col gap-3">
+            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Network Boundary Conditions (b-vector)</h3>
             
-            {Object.keys(inflowVolumes).length > 0 && (
-              <div className="bg-emerald-50/40 p-3 rounded-lg border border-emerald-100/50">
-                <h3 className="text-[10px] font-bold text-emerald-800 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Origin Entries (Inflow)
-                </h3>
-                <div className="space-y-2">
-                  {Object.keys(inflowVolumes).map(nodeId => {
-                    const label = nodes.find(n => n.id === nodeId)?.data.label || nodeId;
-                    return (
-                      <div key={nodeId} className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] text-emerald-900 font-medium truncate w-40" title={label}>{label}</span>
-                        <input 
-                          type="number" 
-                          value={inflowVolumes[nodeId]} 
-                          onChange={(e) => setInflowVolumes({...inflowVolumes, [nodeId]: e.target.value === '' ? '' : Number(e.target.value)})} 
-                          className="w-20 bg-white border border-emerald-200 px-2 py-1 rounded text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 text-slate-800 text-right font-mono" 
-                        />
-                      </div>
-                    )
-                  })}
+            <div className="space-y-2 border border-slate-200 p-3 rounded-lg bg-slate-50 overflow-y-auto max-h-[300px]">
+              {nodes.map(node => (
+                <div key={node.id} className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-slate-700 font-medium truncate w-40" title={node.data.label}>{node.data.label}</span>
+                  <input 
+                    type="number" 
+                    placeholder="0"
+                    value={nodeBoundaries[node.id]} 
+                    onChange={(e) => setNodeBoundaries({...nodeBoundaries, [node.id]: e.target.value === '' ? '' : Number(e.target.value)})} 
+                    className={`w-20 bg-white border px-2 py-1 rounded text-xs focus:outline-none focus:ring-1 text-right font-mono transition-colors
+                      ${(Number(nodeBoundaries[node.id]) || 0) > 0 ? 'border-emerald-300 text-emerald-700 focus:ring-emerald-500 bg-emerald-50' : 
+                        (Number(nodeBoundaries[node.id]) || 0) < 0 ? 'border-rose-300 text-rose-700 focus:ring-rose-500 bg-rose-50' : 
+                        'border-slate-300 text-slate-800 focus:ring-blue-500'}`
+                    } 
+                  />
                 </div>
-              </div>
-            )}
-
-            {Object.keys(outflowVolumes).length > 0 && (
-              <div className="bg-rose-50/40 p-3 rounded-lg border border-rose-100/50">
-                <h3 className="text-[10px] font-bold text-rose-800 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Destination Exits (Outflow)
-                </h3>
-                <div className="space-y-2">
-                  {Object.keys(outflowVolumes).map(nodeId => {
-                    const label = nodes.find(n => n.id === nodeId)?.data.label || nodeId;
-                    return (
-                      <div key={nodeId} className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] text-rose-900 font-medium truncate w-40" title={label}>{label}</span>
-                        <input 
-                          type="number" 
-                          value={outflowVolumes[nodeId]} 
-                          onChange={(e) => setOutflowVolumes({...outflowVolumes, [nodeId]: e.target.value === '' ? '' : Number(e.target.value)})} 
-                          className="w-20 bg-white border border-rose-200 px-2 py-1 rounded text-xs focus:outline-none focus:ring-1 focus:ring-rose-500 text-slate-800 text-right font-mono" 
-                        />
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+              ))}
+            </div>
             
             <div className={`p-3 rounded-lg border shadow-sm transition-colors ${isBalanced ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'}`}>
               <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wide mb-1">
@@ -432,12 +408,12 @@ export default function TrafficDashboard() {
                   {isBalanced ? 'BALANCED ✓' : 'MISMATCH ✕'}
                 </span>
               </div>
-              <div className="flex justify-between text-xs font-mono font-medium text-slate-700">
-                <span>IN: {totalInflow}</span>
-                <span>OUT: {totalOutflow}</span>
+              <div className="flex justify-between text-[11px] font-mono font-medium text-slate-700 mt-2">
+                <span className="text-emerald-700">+ Gen: {totalPositive}</span>
+                <span className="text-rose-700">- Abs: {Math.abs(totalNegative)}</span>
+                <span className={`font-bold ${netBoundary === 0 ? 'text-slate-700' : 'text-red-600'}`}>Net: {netBoundary}</span>
               </div>
             </div>
-
           </div>
 
           <div className="flex flex-col gap-3 pt-2">
