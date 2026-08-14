@@ -29,10 +29,12 @@ export default function TrafficDashboard() {
   const [nodes, setNodes] = useState<Node[]>(customInitialNodes);
   const [edges, setEdges] = useState<Edge[]>(customInitialEdges);
   const [status, setStatus] = useState("System Standby");
-  const [inflowA, setInflowA] = useState(100);
-  const [outflowD, setOutflowD] = useState(100);
-  const [capacityThreshold, setCapacityThreshold] = useState(80);
   
+  // FIX: Allow state to hold an empty string temporarily while typing
+  const [inflowA, setInflowA] = useState<number | string>(100);
+  const [outflowD, setOutflowD] = useState<number | string>(100);
+  
+  const [capacityThreshold, setCapacityThreshold] = useState(80);
   const [isLocked, setIsLocked] = useState(false);
   const [activePresetName, setActivePresetName] = useState("Custom Network");
   const [showAnalysis, setShowAnalysis] = useState(false);
@@ -193,41 +195,42 @@ export default function TrafficDashboard() {
   };
 
   const handleOptimize = async () => {
+    // FIX: Safely parse empty strings back to 0 before calculating
+    const parsedInflow = Number(inflowA) || 0;
+    const parsedOutflow = Number(outflowD) || 0;
+
     const activeEdges = edges.filter(e => !e.data?.blocked);
     if (activeEdges.length === 0) return setStatus("Error: No active roads available");
     
-    // Calculate inflows first to determine boundaries
     const inflows = Array(nodes.length).fill(0);
     
     if (activePresetName.includes("Connaught Place")) {
       const inNode = nodes.findIndex(n => n.id === 'cp-in');
       const outNode = nodes.findIndex(n => n.id === 'cp-out');
-      if (inNode !== -1) inflows[inNode] = inflowA;
-      if (outNode !== -1) inflows[outNode] = -outflowD;
+      if (inNode !== -1) inflows[inNode] = parsedInflow;
+      if (outNode !== -1) inflows[outNode] = -parsedOutflow;
     } else if (activePresetName.includes("DU North Campus")) {
       const inNode = nodes.findIndex(n => n.id === 'du-metro');
       const outNode = nodes.findIndex(n => n.id === 'du-malka');
-      if (inNode !== -1) inflows[inNode] = inflowA;
-      if (outNode !== -1) inflows[outNode] = -outflowD;
+      if (inNode !== -1) inflows[inNode] = parsedInflow;
+      if (outNode !== -1) inflows[outNode] = -parsedOutflow;
     } else if (activePresetName.includes("IGI Airport Connector")) {
       const inNodes = ['igi-dk', 'igi-nh8', 'igi-vk'];
       const outNodes = ['igi-t1', 'igi-t3'];
       
       inNodes.forEach(id => {
         const idx = nodes.findIndex(n => n.id === id);
-        if (idx !== -1) inflows[idx] = inflowA / inNodes.length; 
+        if (idx !== -1) inflows[idx] = parsedInflow / inNodes.length; 
       });
       outNodes.forEach(id => {
         const idx = nodes.findIndex(n => n.id === id);
-        if (idx !== -1) inflows[idx] = -outflowD / outNodes.length;
+        if (idx !== -1) inflows[idx] = -parsedOutflow / outNodes.length;
       });
     } else {
-      inflows[0] = inflowA;
-      inflows[nodes.length - 1] = -outflowD;
+      inflows[0] = parsedInflow;
+      inflows[nodes.length - 1] = -parsedOutflow;
     }
 
-    // PRE-FLIGHT TOPOLOGY CHECK
-    // Scans the active graph to prevent "Sinkholes" or "Trapped" nodes before hitting the server
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i];
       const isBoundaryInflow = inflows[i] > 0;
@@ -236,17 +239,14 @@ export default function TrafficDashboard() {
       const hasIncoming = activeEdges.some(e => e.target === node.id);
       const hasOutgoing = activeEdges.some(e => e.source === node.id);
 
-      // 1. Traffic gets trapped at an internal intersection with nowhere to go
       if (!isBoundaryOutflow && hasIncoming && !hasOutgoing) {
         setStatus(`Warning: Traffic trapped at ${node.data.label}! Need outflow path.`);
         return;
       }
-      // 2. An intersection has outgoing traffic but no way for it to arrive
       if (!isBoundaryInflow && hasOutgoing && !hasIncoming) {
         setStatus(`Warning: Vacuum at ${node.data.label}! Needs inflow path.`);
         return;
       }
-      // 3. User blocked the only way out of an Inflow boundary
       if (isBoundaryInflow && !hasOutgoing) {
         setStatus(`Warning: Inflow completely blocked at ${node.data.label}!`);
         return;
@@ -365,7 +365,8 @@ export default function TrafficDashboard() {
             <input 
               type="number" 
               value={inflowA} 
-              onChange={(e) => setInflowA(Number(e.target.value))} 
+              // FIX: Handle empty string state directly in onChange
+              onChange={(e) => setInflowA(e.target.value === '' ? '' : Number(e.target.value))} 
               className="w-full bg-white border border-slate-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-slate-800" 
             />
           </div>
@@ -375,7 +376,8 @@ export default function TrafficDashboard() {
             <input 
               type="number" 
               value={outflowD} 
-              onChange={(e) => setOutflowD(Number(e.target.value))} 
+              // FIX: Handle empty string state directly in onChange
+              onChange={(e) => setOutflowD(e.target.value === '' ? '' : Number(e.target.value))} 
               className="w-full bg-white border border-slate-300 px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors text-slate-800" 
             />
           </div>
@@ -397,7 +399,6 @@ export default function TrafficDashboard() {
 
           <hr className="border-slate-100 my-2" />
 
-          {/* SCENARIO TESTER TIP */}
           <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg mb-2 shadow-inner">
             <span className="text-xs font-bold text-amber-800 uppercase tracking-wide flex items-center gap-1 mb-1">
               🚧 Scenario Tester
