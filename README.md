@@ -1,54 +1,65 @@
-# 🚦 Urban Traffic Flow Optimizer
+# FlowOptimizer 🚦
 
-A full-stack, multi-page web application designed to model, analyze, and optimize urban traffic networks using applied linear algebra. 
+FlowOptimizer is a full-stack, high-fidelity urban traffic modeling and simulation tool. It treats city infrastructure as a vector space, translating physical intersections and roads into systems of linear equations to calculate perfect mass-conserved traffic flow.
 
-Unlike standard simulation tools that rely on random heuristics, this engine translates physical street grids into formal mathematical vector spaces. By computing the Moore-Penrose pseudo-inverse of network incidence matrices, the system calculates the exact optimal traffic flow required across every road to maintain perfect mass conservation and prevent gridlock.
+Live Deployment: [urban-traffic-optimizer.vercel.app](https://urban-traffic-optimizer.vercel.app)
 
-## ✨ Key Features
+---
 
-* **Interactive Network Builder:** A drag-and-drop canvas (powered by React Flow) allowing users to construct custom city grids, define inflow/outflow boundary conditions, and set bottleneck thresholds.
-* **Real-World Topologies:** Includes highly accurate, pre-configured structural grids of complex Delhi locations:
-  * **Delhi University North Campus:** A 9-node, 13-edge network modeling student commute flows from Vishwavidyalaya Metro through GTB Road, Arts Faculty, SRCC, and Hansraj.
-  * **Connaught Place:** A massive 11-node, 20-edge concentric radial grid modeling the Inner Circle, Outer Circle, and connecting radials of Rajiv Chowk.
-* **Rigorous Mathematical Engine:** A Python/FastAPI backend that converts graph topologies into systems of linear equations and utilizes Singular Value Decomposition (SVD) for least-squares optimization.
-* **Dynamic Matrix Analysis:** A dedicated deep-dive view (`/the-math`) that intercepts the live session data to generate real-time Incidence Matrices ($A$), Boundary Vectors ($b$), and Augmented Matrices $[A \mid b]$ based on the user's specific inputs.
+## 🚀 Core Features
+
+*   **Dynamic Origin-Destination (OD) Matrix:** Configure independent net boundary conditions for every intersection. Generate traffic (sources), absorb traffic (sinks), or maintain strict pass-through conservation.
+*   **Live Mass Conservation Validation:** The UI strictly enforces physical laws. The engine mathematically locks unless the total boundary vector balances perfectly to zero ($\sum b_i = 0$).
+*   **"What-If" Scenario Tester:** Click any edge on the map to block a road (simulating accidents or construction). The algorithm dynamically removes the vector and reroutes traffic on the fly.
+*   **Pre-Flight Topology Checks:** Built-in graph traversal prevents the submission of mathematical sinkholes or vacuum nodes (e.g., generating traffic with no outbound roads).
+*   **Data Export (CSV):** Extract the generated Incidence Matrix ($A$), Boundary Vector ($b$), and Optimized Flow Vector ($x$) for external academic or operational research.
+*   **Telemetry HUD:** Real-time SVG radial gauges track total system flow, peak bottleneck volumes, and active stress points.
 
 ## 🧮 The Mathematics
 
-The core logic of the optimizer is rooted in foundational linear algebra principles (e.g., David C. Lay's *Linear Algebra and Its Applications*). 
+This engine does not rely on simple heuristics; it uses applied linear algebra to model traffic based on **Wardrop's first principle of traffic equilibrium**. 
 
-1. **The Incidence Matrix ($A$):** The network is mapped into a matrix where rows represent intersections and columns represent roads. Entries of `1`, `-1`, and `0` denote the origination, termination, or absence of a road at a given node.
-2. **Flow Conservation ($Ax = b$):** To prevent bottlenecks, the volume of vehicles entering an intersection must equal the volume leaving. $b$ represents the external boundary inflows/outflows, and $x$ represents the unknown flow on each internal road.
-3. **Least-Squares Optimization:** Real-world networks with loops (like Connaught Place) possess non-trivial null spaces, making standard matrix inversion impossible. The engine solves the normal equations:
-   $$A^T A x = A^T b$$
-   By calculating the pseudo-inverse via SVD, the backend finds the vector $x$ that minimizes the Euclidean norm $||Ax - b||$, producing the most balanced distribution of vehicles.
+1.  **The Incidence Matrix ($A$):** The React Flow topography is flattened into a matrix where rows represent intersections and columns represent roads. Directional connectivity is mapped using $1$ (origin), $-1$ (termination), and $0$ (unconnected).
+2.  **The Boundary Vector ($b$):** User inputs construct a unified boundary vector representing the net volume at each intersection. 
+3.  **The Optimization Engine:** Because real-world urban grids contain cyclic loops and are mathematically overdetermined, standard matrix inversion ($A^{-1}$) fails. The Python back-end solves the normal equations:
+    $$A^T A x = A^T b$$
+    Using the **Moore-Penrose Pseudo-inverse** via Singular Value Decomposition (SVD), the engine calculates the exact flow vector ($x$) that minimizes the Euclidean norm $||Ax - b||^2$, preventing gridlock while conserving mass.
 
-## 🛠️ Tech Stack
+## 🛠 Tech Stack
 
-**Frontend:**
-* Next.js / React
-* React Flow (Graph Visualization)
-* Tailwind CSS
-* Deployed on Vercel
+**Front-End:**
+*   **Next.js (React):** App router architecture.
+*   **React Flow:** Interactive, node-based topography canvas.
+*   **Tailwind CSS:** Professional, responsive HUD and UI styling.
 
-**Backend:**
-* Python
-* FastAPI
-* NumPy (Matrix Operations & SVD)
-* Deployed on Render
+**Back-End:**
+*   **Python & FastAPI:** High-performance, stateless math engine.
+*   **NumPy:** Core linear algebra processing, SVD computation, and matrix manipulation.
 
-## 🚀 Running Locally
+## 🗺 Included Topologies
 
-### 1. Start the Backend (FastAPI)
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload
-```
+The app includes hardcoded, geographically accurate presets for analyzing real-world stress points:
+*   **IGI Airport Connector:** Models the high-stakes highway interchanges between Dhaula Kuan, NH-48, and Terminals 1 & 3.
+*   **Connaught Place Grid:** Models the radial concentric flow of Delhi's central business district.
+*   **DU North Campus:** Models student commute flows through Vishwavidyalaya Metro, Arts Faculty, and adjacent roads.
 
-2. Start the Frontend (Next.js)
-cd frontend
-npm install
-npm run dev
-Open http://localhost:3000 in your browser to view the application
+## 💻 Local Installation
 
+1. **Clone the repository:**
+   ```bash
+   git clone [https://github.com/ashishsinghh935-ops/urban-traffic-optimizer.git](https://github.com/ashishsinghh935-ops/urban-traffic-optimizer.git)
+   cd urban-traffic-optimizer
+   ```
+
+2. **Start the Python Engine:**
+   ```cd backend
+   pip install -r requirements.txt
+   uvicorn main:app --reload
+  ```
+3. **Start the Next.js Client:**
+  ``` cd ../frontend
+   npm install
+   npm run dev
+   ```
+
+4. **Open http://localhost:3000 to access the dashboard.**
