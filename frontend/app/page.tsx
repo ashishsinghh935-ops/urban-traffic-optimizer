@@ -7,7 +7,7 @@ import ReactFlow, { Background, Controls, addEdge, applyNodeChanges, applyEdgeCh
 import 'reactflow/dist/style.css';
 
 // ==========================================
-// NEW HUD GAUGE COMPONENT (SVG TELEMETRY)
+// HUD GAUGE COMPONENT (SVG TELEMETRY)
 // ==========================================
 const HUDGauge = ({ value, max, title, subtitle, inverseColors = false }: { value: number, max: number, title: string, subtitle: string, inverseColors?: boolean }) => {
   const radius = 38;
@@ -21,7 +21,6 @@ const HUDGauge = ({ value, max, title, subtitle, inverseColors = false }: { valu
   let strokeClass = "stroke-blue-500";
   
   if (inverseColors) {
-    // For stress points: 0 is good (emerald), >0 is bad (red)
     if (value === 0) {
       colorClass = "text-emerald-500";
       strokeClass = "stroke-emerald-500";
@@ -30,7 +29,6 @@ const HUDGauge = ({ value, max, title, subtitle, inverseColors = false }: { valu
       strokeClass = "stroke-rose-500";
     }
   } else {
-    // For capacity: <80% is good, >80% is warning, >100% is critical
     if (rawPercent >= 100) {
       colorClass = "text-rose-500";
       strokeClass = "stroke-rose-500";
@@ -68,7 +66,6 @@ const HUDGauge = ({ value, max, title, subtitle, inverseColors = false }: { valu
   );
 };
 
-
 // DYNAMIC STYLES
 const baseNodeStyle = 'rounded-full shadow-md font-bold px-5 py-2.5 text-[11px] uppercase tracking-wider transition-all border-2 ';
 const defaultNodeStyle = baseNodeStyle + 'bg-white border-slate-200 text-slate-700 hover:shadow-lg hover:border-blue-400';
@@ -94,6 +91,9 @@ export default function TrafficDashboard() {
   const [nodes, setNodes] = useState<Node[]>(customInitialNodes);
   const [edges, setEdges] = useState<Edge[]>(customInitialEdges);
   const [status, setStatus] = useState("System Standby");
+  
+  // Universal Collapse State
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   const [nodeBoundaries, setNodeBoundaries] = useState<Record<string, string | number>>({
     'A': 1000, 'B': 0, 'C': 0, 'D': -1000
@@ -398,6 +398,9 @@ export default function TrafficDashboard() {
         setStatus(`Optimization Complete`);
         setEdges(updatedEdges);
         setMetrics({ totalFlow: Math.round(total), maxFlow: Math.round(max), bottleneckCount: bCount });
+        
+        // AUTO-HIDE THE LEFT SIDEBAR AND SHOW THE RIGHT HUD
+        setIsSidebarOpen(false);
         setShowAnalysis(true);
         
         const getNodeLabel = (id: string) => nodes.find(n => n.id === id)?.data.label || id;
@@ -417,14 +420,62 @@ export default function TrafficDashboard() {
     }
   };
 
-  // Safe variables for gauges
   const activeRoadsCount = edges.filter(e => !e.data?.blocked).length;
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 text-slate-800 font-sans overflow-hidden">
+    <div className="flex flex-col h-screen w-full bg-slate-50 text-slate-800 font-sans overflow-hidden relative">
       
-      <div className="w-[340px] bg-white border-r border-slate-200 flex flex-col z-10 shadow-sm">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+      {/* MOBILE HEADER BAR */}
+      <div className="lg:hidden flex items-center justify-between bg-white border-b border-slate-200 px-4 py-3 z-40 shrink-0 relative">
+        <div>
+          <h1 className="text-lg font-bold text-slate-900 tracking-tight">FlowOptimizer</h1>
+          <p className="text-[10px] text-slate-500 font-medium">{activePresetName}</p>
+        </div>
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="bg-slate-900 text-white px-3 py-2 rounded-lg text-xs font-bold shadow-sm"
+        >
+          {isSidebarOpen ? '✕ Close Config' : '☰ Controls & Config'}
+        </button>
+      </div>
+
+      {/* CANVAS CONTAINER (Takes full space underneath absolute panels) */}
+      <div className="flex-1 relative w-full h-full z-0">
+        <ReactFlow 
+          nodes={nodes} 
+          edges={edges} 
+          onNodesChange={isLocked ? undefined : onNodesChange} 
+          onEdgesChange={isLocked ? undefined : onEdgesChange} 
+          onConnect={onConnect} 
+          onEdgeClick={onEdgeClick}
+          nodesDraggable={!isLocked}
+          nodesConnectable={!isLocked}
+          elementsSelectable={true}
+          fitView
+          className="bg-slate-50 cursor-pointer"
+        >
+          <Background color="#cbd5e1" gap={20} size={1} />
+          <Controls className="bg-white border-slate-200 fill-slate-600 shadow-sm mb-4 ml-4" showInteractive={false} />
+        </ReactFlow>
+      </div>
+
+      {/* LEFT SIDEBAR (Universal Collapse / Floating Panel) */}
+      <div className={`
+        absolute top-[57px] lg:top-0 left-0 bottom-0 z-30 w-[340px] bg-white/95 backdrop-blur-md border-r border-slate-200 flex flex-col shadow-2xl
+        transform transition-transform duration-300 ease-in-out
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        
+        {/* DESKTOP GRAB HANDLE */}
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className="hidden lg:flex absolute -right-8 top-1/2 -translate-y-1/2 w-8 h-16 bg-white border border-slate-200 border-l-0 rounded-r-xl items-center justify-center shadow-[4px_0_10px_rgba(0,0,0,0.05)] text-slate-500 hover:text-slate-800 hover:w-9 transition-all cursor-pointer z-40"
+          title={isSidebarOpen ? "Hide Config Panel" : "Show Config Panel"}
+        >
+          <span className="font-bold text-xl">{isSidebarOpen ? '‹' : '›'}</span>
+        </button>
+
+        <div className="p-6 border-b border-slate-100 hidden lg:flex justify-between items-center bg-slate-50/50">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
               FlowOptimizer
@@ -435,7 +486,7 @@ export default function TrafficDashboard() {
         
         <div className="p-5 flex-1 flex flex-col gap-5 overflow-y-auto">
           
-          <div className="bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 flex items-center justify-between">
+          <div className="bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 hidden lg:flex items-center justify-between">
              <span className="text-xs font-semibold text-slate-500 uppercase">Topology</span>
              <span className="text-xs font-bold text-slate-800 truncate max-w-[150px]" title={activePresetName}>{activePresetName}</span>
           </div>
@@ -443,7 +494,7 @@ export default function TrafficDashboard() {
           <div className="flex flex-col gap-3">
             <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Network Boundary Conditions (b-vector)</h3>
             
-            <div className="space-y-2 border border-slate-200 p-3 rounded-lg bg-slate-50 overflow-y-auto max-h-[300px]">
+            <div className="space-y-2 border border-slate-200 p-3 rounded-lg bg-slate-50 overflow-y-auto max-h-[220px] lg:max-h-[300px]">
               {nodes.map(node => (
                 <div key={node.id} className="flex items-center justify-between gap-2">
                   <span className="text-[11px] text-slate-700 font-medium truncate w-40" title={node.data.label}>{node.data.label}</span>
@@ -529,76 +580,56 @@ export default function TrafficDashboard() {
           </div>
         </div>
       </div>
-      
-      <div className="flex-1 relative">
-        <ReactFlow 
-          nodes={nodes} 
-          edges={edges} 
-          onNodesChange={isLocked ? undefined : onNodesChange} 
-          onEdgesChange={isLocked ? undefined : onEdgesChange} 
-          onConnect={onConnect} 
-          onEdgeClick={onEdgeClick}
-          nodesDraggable={!isLocked}
-          nodesConnectable={!isLocked}
-          elementsSelectable={true}
-          fitView
-          className="bg-slate-50 cursor-pointer"
-        >
-          <Background color="#cbd5e1" gap={20} size={1} />
-          <Controls className="bg-white border-slate-200 fill-slate-600 shadow-sm" showInteractive={false} />
-        </ReactFlow>
 
-        <div className={`absolute top-0 right-0 h-full w-[360px] bg-white border-l border-slate-200 shadow-2xl transform transition-transform duration-500 ease-in-out flex flex-col ${showAnalysis ? 'translate-x-0' : 'translate-x-full'}`}>
-          <div className="p-6 flex-1 overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
-              <h2 className="text-sm font-bold text-slate-800 tracking-wide uppercase">Telemetry HUD</h2>
-              <button onClick={() => setShowAnalysis(false)} className="text-slate-400 hover:text-slate-600 font-bold transition-colors">✕</button>
-            </div>
-            
-            {/* HUD GAUGE DASHBOARD */}
-            <div className="space-y-6">
-              
-              <div className="bg-slate-800 rounded-xl p-5 shadow-inner border border-slate-700">
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Total System Flow</p>
-                <div className="flex items-baseline gap-2">
-                  <p className="text-4xl text-white font-light tracking-tight">{metrics.totalFlow}</p>
-                  <span className="text-xs text-slate-400 font-mono">units/hr</span>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <HUDGauge 
-                  value={metrics.maxFlow} 
-                  max={capacityThreshold} 
-                  title="Peak Volume" 
-                  subtitle="vs. Capacity Limit" 
-                />
-                
-                <HUDGauge 
-                  value={metrics.bottleneckCount} 
-                  max={activeRoadsCount > 0 ? activeRoadsCount : 1} 
-                  title="Stress Points" 
-                  subtitle="Active Bottlenecks" 
-                  inverseColors={true}
-                />
-              </div>
-
-            </div>
+      {/* RIGHT HUD DRAWER (Absolute Overlay) */}
+      <div className={`absolute top-[57px] lg:top-0 right-0 bottom-0 w-full sm:w-[360px] bg-white/95 backdrop-blur-md border-l border-slate-200 shadow-2xl transform transition-transform duration-500 ease-in-out flex flex-col z-30 ${showAnalysis ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="p-6 flex-1 overflow-y-auto">
+          <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
+            <h2 className="text-sm font-bold text-slate-800 tracking-wide uppercase">Telemetry HUD</h2>
+            <button onClick={() => setShowAnalysis(false)} className="text-slate-400 hover:text-slate-600 font-bold transition-colors">✕</button>
           </div>
           
-          <div className="p-6 border-t border-slate-100 bg-slate-50">
-            <p className="text-[11px] text-slate-500 mb-4 leading-relaxed font-medium">
-              Data computed via Least-Squares SVD to enforce physical mass conservation ($Ax = b$).
-            </p>
-            <Link 
-              href="/the-math"
-              className="w-full block text-center bg-slate-800 text-white font-bold text-sm py-3 px-4 rounded-lg hover:bg-slate-900 hover:shadow-md transition-all"
-            >
-              View Mathematical Breakdown &rarr;
-            </Link>
+          <div className="space-y-6">
+            <div className="bg-slate-800 rounded-xl p-5 shadow-inner border border-slate-700">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Total System Flow</p>
+              <div className="flex items-baseline gap-2">
+                <p className="text-4xl text-white font-light tracking-tight">{metrics.totalFlow}</p>
+                <span className="text-xs text-slate-400 font-mono">units/hr</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <HUDGauge 
+                value={metrics.maxFlow} 
+                max={capacityThreshold} 
+                title="Peak Volume" 
+                subtitle="vs. Capacity Limit" 
+              />
+              
+              <HUDGauge 
+                value={metrics.bottleneckCount} 
+                max={activeRoadsCount > 0 ? activeRoadsCount : 1} 
+                title="Stress Points" 
+                subtitle="Active Bottlenecks" 
+                inverseColors={true}
+              />
+            </div>
           </div>
         </div>
+        
+        <div className="p-6 border-t border-slate-100 bg-slate-50">
+          <p className="text-[11px] text-slate-500 mb-4 leading-relaxed font-medium">
+            Data computed via Least-Squares SVD to enforce physical mass conservation ($Ax = b$).
+          </p>
+          <Link 
+            href="/the-math"
+            className="w-full block text-center bg-slate-800 text-white font-bold text-sm py-3 px-4 rounded-lg hover:bg-slate-900 hover:shadow-md transition-all"
+          >
+            View Mathematical Breakdown &rarr;
+          </Link>
+        </div>
       </div>
+
     </div>
   );
 }
