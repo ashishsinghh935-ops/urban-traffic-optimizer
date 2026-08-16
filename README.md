@@ -13,7 +13,13 @@ Live Deployment: [urban-traffic-optimizer.vercel.app](https://urban-traffic-opti
 *   **"What-If" Scenario Tester:** Click any edge on the map to block a road (simulating accidents or construction). The algorithm dynamically removes the vector and reroutes traffic on the fly.
 *   **Pre-Flight Topology Checks:** Built-in graph traversal prevents the submission of mathematical sinkholes or vacuum nodes (e.g., generating traffic with no outbound roads).
 *   **Data Export (CSV):** Extract the generated Incidence Matrix ($A$), Boundary Vector ($b$), and Optimized Flow Vector ($x$) for external academic or operational research.
-*   **Telemetry HUD:** Real-time SVG radial gauges track total system flow, peak bottleneck volumes, and active stress points.
+
+## ✨ UI / UX & Visualization
+
+*   **Telemetry HUD with Custom SVG Gauges:** Real-time visual tracking of Total System Flow, Peak Volume vs. Capacity, and Active Bottlenecks using zero-dependency, pure math SVG radial gauges.
+*   **Focus Mode (Universal Collapse):** Detached, glassmorphism floating configuration panels that can be slid out of view for an unobstructed, full-screen viewport of the network map. Auto-hides during engine execution.
+*   **Reactive Node Styling:** Intersections dynamically change color on the canvas in real-time based on their algebraic boundary states (Emerald for sources, Rose for sinks, Slate for pass-throughs).
+*   **Mobile-First Engineering:** Fully responsive layout featuring collapsible off-canvas mobile drawers and top-nav toggles, ensuring seamless network configuration on any device.
 
 ## 🧮 The Mathematics
 
@@ -30,7 +36,7 @@ This engine does not rely on simple heuristics; it uses applied linear algebra t
 **Front-End:**
 *   **Next.js (React):** App router architecture.
 *   **React Flow:** Interactive, node-based topography canvas.
-*   **Tailwind CSS:** Professional, responsive HUD and UI styling.
+*   **Tailwind CSS:** Professional, responsive HUD, glassmorphism, and UI styling.
 
 **Back-End:**
 *   **Python & FastAPI:** High-performance, stateless math engine.
