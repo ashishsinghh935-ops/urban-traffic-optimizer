@@ -3,8 +3,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import ReactFlow, { Background, Controls, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge, Connection } from 'reactflow';
+import ReactFlow, { Background, Controls, MiniMap, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge, Connection } from 'reactflow';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import 'reactflow/dist/style.css';
 
 // ==========================================
@@ -94,6 +95,7 @@ export default function TrafficDashboard() {
   const [status, setStatus] = useState("System Standby");
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
   const [isComputing, setIsComputing] = useState(false);
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
   
@@ -121,12 +123,18 @@ export default function TrafficDashboard() {
   const onConnect = useCallback((params: Connection) => {
     const newEdge = { ...params, id: `e${params.source}-${params.target}`, animated: true, data: { blocked: false }, label: '---', style: { stroke: '#94a3b8', strokeWidth: 2 } };
     setEdges((eds) => addEdge(newEdge, eds));
+    toast.info(`Connected ${params.source} to ${params.target}`);
   }, []);
 
   const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
     setEdges((eds) => eds.map((e) => {
       if (e.id === edge.id) {
         const isBlocked = !e.data?.blocked;
+        if (isBlocked) {
+          toast.error(`Road ${e.source} → ${e.target} Blocked!`);
+        } else {
+          toast.success(`Road ${e.source} → ${e.target} Re-opened`);
+        }
         return {
           ...e,
           data: { ...e.data, blocked: isBlocked },
@@ -142,7 +150,7 @@ export default function TrafficDashboard() {
     }));
   }, []);
 
-  // NEW HOVER EVENT HANDLERS
+  // HOVER EVENT HANDLERS
   const onNodeMouseEnter = useCallback((event: React.MouseEvent, node: Node) => {
     const val = Number(nodeBoundaries[node.id]) || 0;
     const typeStr = val > 0 ? "Source Node (Traffic Gen)" : val < 0 ? "Sink Node (Traffic Abs)" : "Pass-through Node";
@@ -205,6 +213,7 @@ export default function TrafficDashboard() {
     };
     setNodes((nds) => [...nds, newNode]);
     setNodeBoundaries(prev => ({ ...prev, [nextId]: 0 }));
+    toast.success(`Node ${nextId} added to the grid.`);
   };
 
   const loadPreset = (presetId: string) => {
@@ -257,6 +266,7 @@ export default function TrafficDashboard() {
         else if (node.id === 'cp-out') initialBounds[node.id] = -1000;
         else initialBounds[node.id] = 0;
       });
+      toast.success("Loaded Connaught Place Network");
     } 
     else if (presetId === 'du-north') {
       setActivePresetName("DU North Campus (Locked)");
@@ -292,6 +302,7 @@ export default function TrafficDashboard() {
         else if (node.id === 'du-malka') initialBounds[node.id] = -1000;
         else initialBounds[node.id] = 0;
       });
+      toast.success("Loaded DU North Campus Network");
     }
     else if (presetId === 'igi-connector') {
       setActivePresetName("IGI Airport Connector (Locked)");
@@ -325,6 +336,7 @@ export default function TrafficDashboard() {
         else initialBounds[node.id] = 0;
       });
       initialBounds['igi-dk'] = 334; 
+      toast.success("Loaded IGI Airport Connector Network");
     }
     else {
       setActivePresetName("Custom Network");
@@ -336,6 +348,7 @@ export default function TrafficDashboard() {
         else if (node.id === 'D') initialBounds[node.id] = -1000;
         else initialBounds[node.id] = 0;
       });
+      toast.info("Started Custom Canvas");
     }
 
     setNodes(n);
@@ -345,7 +358,10 @@ export default function TrafficDashboard() {
 
   const handleOptimize = async () => {
     const activeEdges = edges.filter(e => !e.data?.blocked);
-    if (activeEdges.length === 0) return setStatus("Error: No active roads available");
+    if (activeEdges.length === 0) {
+      toast.error("Optimization Failed: No active roads available.");
+      return setStatus("Error: No active roads available");
+    }
     
     const bVector = nodes.map(n => Number(nodeBoundaries[n.id]) || 0);
 
@@ -357,16 +373,25 @@ export default function TrafficDashboard() {
       const hasOutgoing = activeEdges.some(e => e.source === node.id);
 
       if (bVal === 0) {
-        if (hasIncoming && !hasOutgoing) return setStatus(`Warning: Traffic trapped at ${node.data.label}!`);
-        if (hasOutgoing && !hasIncoming) return setStatus(`Warning: Vacuum at ${node.data.label}!`);
+        if (hasIncoming && !hasOutgoing) {
+          toast.warning(`Traffic trapped at ${node.data.label}! Set a negative boundary.`);
+          return setStatus(`Warning: Traffic trapped at ${node.data.label}!`);
+        }
+        if (hasOutgoing && !hasIncoming) {
+          toast.warning(`Vacuum detected at ${node.data.label}! Set a positive boundary.`);
+          return setStatus(`Warning: Vacuum at ${node.data.label}!`);
+        }
       } else if (bVal > 0 && !hasOutgoing) {
+        toast.error(`Source blocked at ${node.data.label}!`);
         return setStatus(`Warning: Source blocked at ${node.data.label}!`);
       } else if (bVal < 0 && !hasIncoming) {
+        toast.error(`Sink blocked at ${node.data.label}!`);
         return setStatus(`Warning: Sink blocked at ${node.data.label}!`);
       }
     }
 
     setStatus("Computing Matrix...");
+    toast.loading("Matrix computing via SVD...", { id: 'math-engine' });
     
     setIsComputing(true);
     setTerminalLogs(['> Initializing backend optimizer...']);
@@ -475,6 +500,8 @@ export default function TrafficDashboard() {
         });
 
         setStatus(`Optimization Complete`);
+        toast.success("Telemetry dynamically mapped across network.", { id: 'math-engine' });
+        
         setEdges(updatedEdges);
         setMetrics({ totalFlow: Math.round(total), maxFlow: Math.round(max), bottleneckCount: bCount });
         
@@ -495,6 +522,7 @@ export default function TrafficDashboard() {
       }
     } catch (error) {
       setStatus("Error: Connection Failed");
+      toast.error("Engine Connection Failed.", { id: 'math-engine' });
     } finally {
       setIsComputing(false);
       setTerminalLogs([]);
@@ -580,6 +608,22 @@ export default function TrafficDashboard() {
         >
           <Background color="#cbd5e1" gap={20} size={1} />
           <Controls className="bg-white border-slate-200 fill-slate-600 shadow-sm mb-4 ml-4" showInteractive={false} />
+          
+          {/* THE CAD MINIMAP */}
+          <MiniMap 
+            nodeStrokeColor={(n) => {
+              if (n.className?.includes('emerald')) return '#10b981';
+              if (n.className?.includes('rose')) return '#f43f5e';
+              return '#cbd5e1';
+            }}
+            nodeColor={(n) => {
+              if (n.className?.includes('emerald')) return '#ecfdf5';
+              if (n.className?.includes('rose')) return '#fff1f2';
+              return '#ffffff';
+            }}
+            className="bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg shadow-md mb-4 ml-4"
+            position="bottom-left"
+          />
         </ReactFlow>
       </div>
 

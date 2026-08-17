@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { Toaster } from 'sonner';
 import "./globals.css";
 
 // Premium Typography setup
@@ -35,6 +36,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased bg-slate-50 text-slate-900 selection:bg-blue-200 selection:text-blue-900 flex flex-col min-h-screen`}>
+        {/* Sonner Toast Provider configured for premium aesthetics */}
+        <Toaster position="top-center" richColors theme="light" />
         {children}
       </body>
     </html>
