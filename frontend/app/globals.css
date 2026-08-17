@@ -1,14 +1,10 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 @layer base {
-  /* Map Next.js font variables to native HTML tags */
   html {
     font-family: var(--font-sans), system-ui, sans-serif;
   }
   
-  /* Force all mono text and code blocks to use JetBrains Mono */
   code, pre, .font-mono {
     font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
   }
@@ -35,7 +31,6 @@
   background: #94a3b8;
 }
 
-/* Hide scrollbar completely in the React Flow canvas to keep it clean */
 .react-flow {
   scrollbar-width: none;
   -ms-overflow-style: none;
