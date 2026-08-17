@@ -94,7 +94,6 @@ export default function TrafficDashboard() {
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
-  // NEW: Terminal Animation States
   const [isComputing, setIsComputing] = useState(false);
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
   
@@ -324,18 +323,17 @@ export default function TrafficDashboard() {
       const hasOutgoing = activeEdges.some(e => e.source === node.id);
 
       if (bVal === 0) {
-        if (hasIncoming && !hasOutgoing) return setStatus(`Warning: Traffic trapped at ${node.data.label}! Set a negative boundary to absorb it.`);
-        if (hasOutgoing && !hasIncoming) return setStatus(`Warning: Vacuum at ${node.data.label}! Set a positive boundary to generate it.`);
+        if (hasIncoming && !hasOutgoing) return setStatus(`Warning: Traffic trapped at ${node.data.label}!`);
+        if (hasOutgoing && !hasIncoming) return setStatus(`Warning: Vacuum at ${node.data.label}!`);
       } else if (bVal > 0 && !hasOutgoing) {
-        return setStatus(`Warning: Source completely blocked at ${node.data.label}!`);
+        return setStatus(`Warning: Source blocked at ${node.data.label}!`);
       } else if (bVal < 0 && !hasIncoming) {
-        return setStatus(`Warning: Sink completely blocked at ${node.data.label}!`);
+        return setStatus(`Warning: Sink blocked at ${node.data.label}!`);
       }
     }
 
     setStatus("Computing Matrix...");
     
-    // START TERMINAL BOOT-UP SEQUENCE
     setIsComputing(true);
     setTerminalLogs(['> Initializing backend optimizer...']);
 
@@ -355,17 +353,16 @@ export default function TrafficDashboard() {
         `> Translating physical topology to AᵀAx = Aᵀb...`,
         `> Computing Moore-Penrose Pseudo-Inverse via SVD...`,
         `> Minimizing Euclidean norm ||Ax - b||²...`,
-        `> Convergence achieved. Mapping output...`
+        `> Convergence achieved. Mapping telemetry...`
       ];
       for (const log of logs) {
-        await new Promise(r => setTimeout(r, 400 + Math.random() * 250)); // Random realistic computation delay
+        await new Promise(r => setTimeout(r, 400 + Math.random() * 250)); 
         setTerminalLogs(prev => [...prev, log]);
       }
-      await new Promise(r => setTimeout(r, 500)); // Final pause before revealing HUD
+      await new Promise(r => setTimeout(r, 500)); 
     };
 
     try {
-      // Execute the API call and the visual terminal delay concurrently
       const [response, _] = await Promise.all([
         fetch('https://urban-traffic-optimizer.onrender.com/optimize', {
           method: 'POST',
@@ -399,14 +396,40 @@ export default function TrafficDashboard() {
           activeIdx++;
 
           const isBottleneck = flow >= capacityThreshold;
+          const flowPercent = flow / capacityThreshold;
           total += flow;
           if (flow > max) max = flow;
           if (isBottleneck) bCount++;
 
-          const animDuration = Math.max(0.3, 3 - (flow / capacityThreshold) * 2.5);
-          let edgeColor = '#cbd5e1'; 
-          if (isBottleneck) edgeColor = '#ef4444'; 
-          else if (flow > 0) edgeColor = '#3b82f6'; 
+          // ==========================================
+          // DYNAMIC TELEMETRY PULSE LOGIC
+          // ==========================================
+          let edgeColor = '#94a3b8';
+          let strokeWidth = 2;
+          let dashArray = 'none';
+          let animDuration = '0s';
+
+          if (flow > 0) {
+            if (isBottleneck) {
+              // Traffic Jam: Slow crawl, thick red dense line
+              edgeColor = '#ef4444'; 
+              strokeWidth = 5 + Math.min(3, flowPercent); // Thickens up to 8px based on severity
+              dashArray = '15, 5'; // Tightly packed cars
+              animDuration = `${Math.min(5, flowPercent * 2)}s`; 
+            } else if (flowPercent > 0.4) {
+              // Efficient Flow: Fast moving, solid blue, medium thickness
+              edgeColor = '#3b82f6'; 
+              strokeWidth = 3 + (flowPercent * 2); 
+              dashArray = '10, 10'; // Steady pulsing
+              animDuration = `${Math.max(0.4, 1.5 - flowPercent)}s`; 
+            } else {
+              // Empty Road: Leisurely pace, sparse light blue line
+              edgeColor = '#60a5fa'; 
+              strokeWidth = 2;
+              dashArray = '5, 20'; // Lots of empty space between pulses
+              animDuration = '2s'; 
+            }
+          }
 
           return {
             ...edge,
@@ -416,8 +439,9 @@ export default function TrafficDashboard() {
             labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
             style: { 
               stroke: edgeColor,
-              strokeWidth: isBottleneck ? 4 : (flow > 0 ? 3 : 2),
-              animationDuration: `${animDuration}s` 
+              strokeWidth: strokeWidth,
+              strokeDasharray: flow > 0 ? dashArray : 'none',
+              animationDuration: animDuration 
             }
           };
         });
@@ -444,7 +468,6 @@ export default function TrafficDashboard() {
     } catch (error) {
       setStatus("Error: Connection Failed");
     } finally {
-      // CLEAR TERMINAL OVERLAY
       setIsComputing(false);
       setTerminalLogs([]);
     }
@@ -459,14 +482,12 @@ export default function TrafficDashboard() {
       {isComputing && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity">
           <div className="w-[500px] max-w-[90%] bg-slate-900 rounded-lg shadow-2xl border border-slate-700 overflow-hidden font-mono flex flex-col">
-            {/* Fake Mac Window Controls */}
             <div className="bg-slate-800 px-4 py-2 flex items-center gap-2 border-b border-slate-700">
               <div className="w-3 h-3 rounded-full bg-rose-500"></div>
               <div className="w-3 h-3 rounded-full bg-amber-500"></div>
               <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
               <span className="ml-2 text-xs text-slate-400">optimizer.py - SVD Execution</span>
             </div>
-            {/* Terminal Body */}
             <div className="p-5 h-[220px] text-emerald-400 text-[13px] leading-relaxed overflow-y-auto flex flex-col gap-1 shadow-inner">
               {terminalLogs.map((log, i) => (
                 <div key={i} className="animate-pulse">{log}</div>
