@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ReactFlow, { Background, Controls, addEdge, applyNodeChanges, applyEdgeChanges, Node, Edge, Connection } from 'reactflow';
+import { motion, AnimatePresence } from 'framer-motion';
 import 'reactflow/dist/style.css';
 
 // ==========================================
@@ -93,10 +94,12 @@ export default function TrafficDashboard() {
   const [status, setStatus] = useState("System Standby");
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  
   const [isComputing, setIsComputing] = useState(false);
   const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
   
+  // HOVER TOOLTIP STATE
+  const [hoverData, setHoverData] = useState<{ x: number, y: number, title: string, lines: string[] } | null>(null);
+
   const [nodeBoundaries, setNodeBoundaries] = useState<Record<string, string | number>>({
     'A': 1000, 'B': 0, 'C': 0, 'D': -1000
   });
@@ -138,6 +141,37 @@ export default function TrafficDashboard() {
       return e;
     }));
   }, []);
+
+  // NEW HOVER EVENT HANDLERS
+  const onNodeMouseEnter = useCallback((event: React.MouseEvent, node: Node) => {
+    const val = Number(nodeBoundaries[node.id]) || 0;
+    const typeStr = val > 0 ? "Source Node (Traffic Gen)" : val < 0 ? "Sink Node (Traffic Abs)" : "Pass-through Node";
+    setHoverData({
+      x: event.clientX,
+      y: event.clientY,
+      title: node.data.label,
+      lines: [
+        `Boundary Vector (b): ${val}`,
+        `Classification: ${typeStr}`
+      ]
+    });
+  }, [nodeBoundaries]);
+
+  const onEdgeMouseEnter = useCallback((event: React.MouseEvent, edge: Edge) => {
+    const flowStr = edge.label && edge.label !== '---' ? edge.label : '0 units/hr';
+    const blockedStr = edge.data?.blocked ? 'BLOCKED 🚧' : 'Active Flow';
+    setHoverData({
+      x: event.clientX,
+      y: event.clientY,
+      title: `Edge Vector: ${edge.source} → ${edge.target}`,
+      lines: [
+        `Computed Flow (x): ${flowStr}`,
+        `Status: ${blockedStr}`
+      ]
+    });
+  }, []);
+
+  const onMouseLeave = useCallback(() => setHoverData(null), []);
 
   useEffect(() => {
     setNodes(currentNodes => currentNodes.map(n => {
@@ -401,9 +435,6 @@ export default function TrafficDashboard() {
           if (flow > max) max = flow;
           if (isBottleneck) bCount++;
 
-          // ==========================================
-          // DYNAMIC TELEMETRY PULSE LOGIC
-          // ==========================================
           let edgeColor = '#94a3b8';
           let strokeWidth = 2;
           let dashArray = 'none';
@@ -411,22 +442,19 @@ export default function TrafficDashboard() {
 
           if (flow > 0) {
             if (isBottleneck) {
-              // Traffic Jam: Slow crawl, thick red dense line
               edgeColor = '#ef4444'; 
-              strokeWidth = 5 + Math.min(3, flowPercent); // Thickens up to 8px based on severity
-              dashArray = '15, 5'; // Tightly packed cars
+              strokeWidth = 5 + Math.min(3, flowPercent);
+              dashArray = '15, 5';
               animDuration = `${Math.min(5, flowPercent * 2)}s`; 
             } else if (flowPercent > 0.4) {
-              // Efficient Flow: Fast moving, solid blue, medium thickness
               edgeColor = '#3b82f6'; 
               strokeWidth = 3 + (flowPercent * 2); 
-              dashArray = '10, 10'; // Steady pulsing
+              dashArray = '10, 10'; 
               animDuration = `${Math.max(0.4, 1.5 - flowPercent)}s`; 
             } else {
-              // Empty Road: Leisurely pace, sparse light blue line
               edgeColor = '#60a5fa'; 
               strokeWidth = 2;
-              dashArray = '5, 20'; // Lots of empty space between pulses
+              dashArray = '5, 20'; 
               animDuration = '2s'; 
             }
           }
@@ -498,6 +526,25 @@ export default function TrafficDashboard() {
         </div>
       )}
 
+      {/* HOVER TOOLTIP OVERLAY */}
+      <AnimatePresence>
+        {hoverData && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="fixed z-50 bg-white/90 backdrop-blur-md border border-slate-200 shadow-xl rounded-lg p-3 pointer-events-none w-48"
+            style={{ left: hoverData.x + 15, top: hoverData.y + 15 }}
+          >
+            <p className="text-[11px] font-bold text-slate-800 uppercase tracking-wider mb-2 border-b border-slate-100 pb-1">{hoverData.title}</p>
+            {hoverData.lines.map((line, idx) => (
+              <p key={idx} className="text-xs text-slate-600 font-mono mb-1 last:mb-0">{line}</p>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* MOBILE HEADER BAR */}
       <div className="lg:hidden flex items-center justify-between bg-white border-b border-slate-200 px-4 py-3 z-40 shrink-0 relative">
         <div>
@@ -521,6 +568,10 @@ export default function TrafficDashboard() {
           onEdgesChange={isLocked ? undefined : onEdgesChange} 
           onConnect={onConnect} 
           onEdgeClick={onEdgeClick}
+          onNodeMouseEnter={onNodeMouseEnter}
+          onNodeMouseLeave={onMouseLeave}
+          onEdgeMouseEnter={onEdgeMouseEnter}
+          onEdgeMouseLeave={onMouseLeave}
           nodesDraggable={!isLocked}
           nodesConnectable={!isLocked}
           elementsSelectable={true}
