@@ -92,8 +92,11 @@ export default function TrafficDashboard() {
   const [edges, setEdges] = useState<Edge[]>(customInitialEdges);
   const [status, setStatus] = useState("System Standby");
   
-  // Universal Collapse State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  
+  // NEW: Terminal Animation States
+  const [isComputing, setIsComputing] = useState(false);
+  const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
   
   const [nodeBoundaries, setNodeBoundaries] = useState<Record<string, string | number>>({
     'A': 1000, 'B': 0, 'C': 0, 'D': -1000
@@ -331,6 +334,10 @@ export default function TrafficDashboard() {
     }
 
     setStatus("Computing Matrix...");
+    
+    // START TERMINAL BOOT-UP SEQUENCE
+    setIsComputing(true);
+    setTerminalLogs(['> Initializing backend optimizer...']);
 
     const matrix: number[][] = Array(nodes.length).fill(0).map(() => Array(activeEdges.length).fill(0));
     
@@ -341,12 +348,32 @@ export default function TrafficDashboard() {
       if (targetIndex !== -1) matrix[targetIndex][edgeIndex] = -1;
     });
 
+    const runTerminalSequence = async () => {
+      const logs = [
+        `> Extracting Incidence Matrix [${nodes.length}x${activeEdges.length}]...`,
+        `> Assembling boundary constraint vector (b)...`,
+        `> Translating physical topology to AᵀAx = Aᵀb...`,
+        `> Computing Moore-Penrose Pseudo-Inverse via SVD...`,
+        `> Minimizing Euclidean norm ||Ax - b||²...`,
+        `> Convergence achieved. Mapping output...`
+      ];
+      for (const log of logs) {
+        await new Promise(r => setTimeout(r, 400 + Math.random() * 250)); // Random realistic computation delay
+        setTerminalLogs(prev => [...prev, log]);
+      }
+      await new Promise(r => setTimeout(r, 500)); // Final pause before revealing HUD
+    };
+
     try {
-      const response = await fetch('https://urban-traffic-optimizer.onrender.com/optimize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ incidence_matrix: matrix, external_inflows: bVector })
-      });
+      // Execute the API call and the visual terminal delay concurrently
+      const [response, _] = await Promise.all([
+        fetch('https://urban-traffic-optimizer.onrender.com/optimize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ incidence_matrix: matrix, external_inflows: bVector })
+        }),
+        runTerminalSequence()
+      ]);
       
       const data = await response.json();
       
@@ -399,7 +426,6 @@ export default function TrafficDashboard() {
         setEdges(updatedEdges);
         setMetrics({ totalFlow: Math.round(total), maxFlow: Math.round(max), bottleneckCount: bCount });
         
-        // AUTO-HIDE THE LEFT SIDEBAR AND SHOW THE RIGHT HUD
         setIsSidebarOpen(false);
         setShowAnalysis(true);
         
@@ -417,6 +443,10 @@ export default function TrafficDashboard() {
       }
     } catch (error) {
       setStatus("Error: Connection Failed");
+    } finally {
+      // CLEAR TERMINAL OVERLAY
+      setIsComputing(false);
+      setTerminalLogs([]);
     }
   };
 
@@ -425,6 +455,28 @@ export default function TrafficDashboard() {
   return (
     <div className="flex flex-col h-screen w-full bg-slate-50 text-slate-800 font-sans overflow-hidden relative">
       
+      {/* SVD TERMINAL OVERLAY */}
+      {isComputing && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity">
+          <div className="w-[500px] max-w-[90%] bg-slate-900 rounded-lg shadow-2xl border border-slate-700 overflow-hidden font-mono flex flex-col">
+            {/* Fake Mac Window Controls */}
+            <div className="bg-slate-800 px-4 py-2 flex items-center gap-2 border-b border-slate-700">
+              <div className="w-3 h-3 rounded-full bg-rose-500"></div>
+              <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+              <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+              <span className="ml-2 text-xs text-slate-400">optimizer.py - SVD Execution</span>
+            </div>
+            {/* Terminal Body */}
+            <div className="p-5 h-[220px] text-emerald-400 text-[13px] leading-relaxed overflow-y-auto flex flex-col gap-1 shadow-inner">
+              {terminalLogs.map((log, i) => (
+                <div key={i} className="animate-pulse">{log}</div>
+              ))}
+              <div className="animate-pulse font-bold">_</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MOBILE HEADER BAR */}
       <div className="lg:hidden flex items-center justify-between bg-white border-b border-slate-200 px-4 py-3 z-40 shrink-0 relative">
         <div>
@@ -439,7 +491,7 @@ export default function TrafficDashboard() {
         </button>
       </div>
 
-      {/* CANVAS CONTAINER (Takes full space underneath absolute panels) */}
+      {/* CANVAS CONTAINER */}
       <div className="flex-1 relative w-full h-full z-0">
         <ReactFlow 
           nodes={nodes} 
@@ -556,7 +608,7 @@ export default function TrafficDashboard() {
 
           <button 
             onClick={handleOptimize} 
-            disabled={!isBalanced}
+            disabled={!isBalanced || isComputing}
             className={`w-full px-4 py-3 rounded-md transition-all font-bold text-sm shadow-sm mt-1 ${isBalanced ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
           >
             {isBalanced ? 'Run Math Engine' : 'Engine Locked (Unbalanced)'}
@@ -581,7 +633,7 @@ export default function TrafficDashboard() {
         </div>
       </div>
 
-      {/* RIGHT HUD DRAWER (Absolute Overlay) */}
+      {/* RIGHT HUD DRAWER */}
       <div className={`absolute top-[57px] lg:top-0 right-0 bottom-0 w-full sm:w-[360px] bg-white/95 backdrop-blur-md border-l border-slate-200 shadow-2xl transform transition-transform duration-500 ease-in-out flex flex-col z-30 ${showAnalysis ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="p-6 flex-1 overflow-y-auto">
           <div className="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
