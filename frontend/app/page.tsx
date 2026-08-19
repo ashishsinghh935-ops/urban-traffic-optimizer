@@ -497,10 +497,39 @@ export default function TrafficDashboard() {
           };
         });
 
+        // THERMAL HEATMAP LOGIC: Map glows to nodes based on volume
+        const updatedNodes = nodes.map(node => {
+          let nodeTotalFlow = 0;
+          let isNodeBottlenecked = false;
+
+          updatedEdges.forEach(edge => {
+            if (!edge.data?.blocked && (edge.source === node.id || edge.target === node.id)) {
+               const edgeFlow = parseInt(edge.label as string) || 0;
+               nodeTotalFlow += edgeFlow;
+               if (edgeFlow >= capacityThreshold) isNodeBottlenecked = true;
+            }
+          });
+
+          let thermalGlow = 'none';
+          if (isNodeBottlenecked || nodeTotalFlow >= capacityThreshold * 1.5) {
+            thermalGlow = '0 0 35px 10px rgba(239, 68, 68, 0.4)'; // Severe Red Glow
+          } else if (nodeTotalFlow >= capacityThreshold * 0.8) {
+            thermalGlow = '0 0 25px 8px rgba(245, 158, 11, 0.3)'; // Amber Glow
+          } else if (nodeTotalFlow > 0) {
+            thermalGlow = '0 0 15px 5px rgba(59, 130, 246, 0.2)'; // Cool Blue Glow
+          }
+
+          return {
+            ...node,
+            style: { ...node.style, boxShadow: thermalGlow, transition: 'box-shadow 1.5s ease-in-out' }
+          };
+        });
+
         setStatus(`Optimization Complete`);
-        toast.success("Telemetry dynamically mapped across network.", { id: 'math-engine' });
+        toast.success("Thermal Heatmap dynamically mapped across network.", { id: 'math-engine' });
         
         setEdges(updatedEdges);
+        setNodes(updatedNodes);
         setMetrics({ totalFlow: Math.round(total), maxFlow: Math.round(max), bottleneckCount: bCount });
         
         setIsSidebarOpen(false);
@@ -514,7 +543,7 @@ export default function TrafficDashboard() {
           xVector: data.optimized_flows,
           nodeLabels: nodes.map(n => n.data.label),
           edgeLabels: activeEdges.map(e => `${getNodeLabel(e.source)} → ${getNodeLabel(e.target)}`),
-          nodes: nodes,
+          nodes: updatedNodes,
           edges: updatedEdges 
         }));
       }
@@ -585,7 +614,7 @@ export default function TrafficDashboard() {
         </button>
       </div>
 
-      {/* CANVAS CONTAINER */}
+      {/* CANVAS CONTAINER (Clean 2D Viewport with Heatmap active) */}
       <div className="flex-1 relative w-full h-full z-0 bg-slate-50">
         <ReactFlow 
           nodes={nodes} 
