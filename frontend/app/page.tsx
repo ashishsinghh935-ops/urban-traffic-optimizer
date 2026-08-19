@@ -102,6 +102,9 @@ export default function TrafficDashboard() {
   // HOVER TOOLTIP STATE
   const [hoverData, setHoverData] = useState<{ x: number, y: number, title: string, lines: string[] } | null>(null);
 
+  // 3D COMMAND CENTER STATE
+  const [is3DMode, setIs3DMode] = useState(false);
+
   const [nodeBoundaries, setNodeBoundaries] = useState<Record<string, string | number>>({
     'A': 1000, 'B': 0, 'C': 0, 'D': -1000
   });
@@ -150,8 +153,8 @@ export default function TrafficDashboard() {
     }));
   }, []);
 
-  // HOVER EVENT HANDLERS
   const onNodeMouseEnter = useCallback((event: React.MouseEvent, node: Node) => {
+    if (is3DMode) return; // Disable hover tooltips in 3D mode for performance
     const val = Number(nodeBoundaries[node.id]) || 0;
     const typeStr = val > 0 ? "Source Node (Traffic Gen)" : val < 0 ? "Sink Node (Traffic Abs)" : "Pass-through Node";
     setHoverData({
@@ -163,9 +166,10 @@ export default function TrafficDashboard() {
         `Classification: ${typeStr}`
       ]
     });
-  }, [nodeBoundaries]);
+  }, [nodeBoundaries, is3DMode]);
 
   const onEdgeMouseEnter = useCallback((event: React.MouseEvent, edge: Edge) => {
+    if (is3DMode) return; 
     const flowStr = edge.label && edge.label !== '---' ? edge.label : '0 units/hr';
     const blockedStr = edge.data?.blocked ? 'BLOCKED 🚧' : 'Active Flow';
     setHoverData({
@@ -177,7 +181,7 @@ export default function TrafficDashboard() {
         `Status: ${blockedStr}`
       ]
     });
-  }, []);
+  }, [is3DMode]);
 
   const onMouseLeave = useCallback(() => setHoverData(null), []);
 
@@ -556,7 +560,7 @@ export default function TrafficDashboard() {
 
       {/* HOVER TOOLTIP OVERLAY */}
       <AnimatePresence>
-        {hoverData && (
+        {hoverData && !is3DMode && (
           <motion.div 
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -587,44 +591,71 @@ export default function TrafficDashboard() {
         </button>
       </div>
 
-      {/* CANVAS CONTAINER */}
-      <div className="flex-1 relative w-full h-full z-0">
-        <ReactFlow 
-          nodes={nodes} 
-          edges={edges} 
-          onNodesChange={isLocked ? undefined : onNodesChange} 
-          onEdgesChange={isLocked ? undefined : onEdgesChange} 
-          onConnect={onConnect} 
-          onEdgeClick={onEdgeClick}
-          onNodeMouseEnter={onNodeMouseEnter}
-          onNodeMouseLeave={onMouseLeave}
-          onEdgeMouseEnter={onEdgeMouseEnter}
-          onEdgeMouseLeave={onMouseLeave}
-          nodesDraggable={!isLocked}
-          nodesConnectable={!isLocked}
-          elementsSelectable={true}
-          fitView
-          className="bg-slate-50 cursor-pointer"
+      {/* CANVAS CONTAINER WITH 3D CSS TRANSFORMS */}
+      <div className="flex-1 relative w-full h-full z-0 bg-slate-200/50 overflow-hidden">
+        
+        <div 
+          className={`w-full h-full transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] origin-center bg-slate-50 ${
+            is3DMode 
+              ? 'scale-[0.85] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.4)] rounded-3xl border border-slate-300 overflow-hidden' 
+              : ''
+          }`}
+          style={is3DMode ? { transform: 'perspective(1500px) rotateX(55deg) rotateZ(-35deg)' } : {}}
         >
-          <Background color="#cbd5e1" gap={20} size={1} />
-          <Controls className="bg-white border-slate-200 fill-slate-600 shadow-sm mb-4 ml-4" showInteractive={false} />
-          
-          {/* THE CAD MINIMAP */}
-          <MiniMap 
-            nodeStrokeColor={(n) => {
-              if (n.className?.includes('emerald')) return '#10b981';
-              if (n.className?.includes('rose')) return '#f43f5e';
-              return '#cbd5e1';
-            }}
-            nodeColor={(n) => {
-              if (n.className?.includes('emerald')) return '#ecfdf5';
-              if (n.className?.includes('rose')) return '#fff1f2';
-              return '#ffffff';
-            }}
-            className="bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg shadow-md mb-4 ml-4"
-            position="bottom-left"
-          />
-        </ReactFlow>
+          <ReactFlow 
+            nodes={nodes} 
+            edges={edges} 
+            onNodesChange={isLocked ? undefined : onNodesChange} 
+            onEdgesChange={isLocked ? undefined : onEdgesChange} 
+            onConnect={onConnect} 
+            onEdgeClick={onEdgeClick}
+            onNodeMouseEnter={onNodeMouseEnter}
+            onNodeMouseLeave={onMouseLeave}
+            onEdgeMouseEnter={onEdgeMouseEnter}
+            onEdgeMouseLeave={onMouseLeave}
+            nodesDraggable={!isLocked}
+            nodesConnectable={!isLocked}
+            elementsSelectable={true}
+            fitView
+            className="cursor-pointer"
+          >
+            <Background color="#cbd5e1" gap={20} size={1} />
+            <Controls className="bg-white border-slate-200 fill-slate-600 shadow-sm mb-4 ml-4" showInteractive={false} />
+            
+            <MiniMap 
+              nodeStrokeColor={(n) => {
+                if (n.className?.includes('emerald')) return '#10b981';
+                if (n.className?.includes('rose')) return '#f43f5e';
+                return '#cbd5e1';
+              }}
+              nodeColor={(n) => {
+                if (n.className?.includes('emerald')) return '#ecfdf5';
+                if (n.className?.includes('rose')) return '#fff1f2';
+                return '#ffffff';
+              }}
+              className="bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg shadow-md mb-4 ml-4"
+              position="bottom-left"
+            />
+          </ReactFlow>
+        </div>
+
+        {/* 3D MODE TOGGLE (FLOATING DOCK) */}
+        <div className={`absolute bottom-6 left-1/2 -translate-x-1/2 z-20 transition-all duration-500 ${showAnalysis ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+          <button 
+            onClick={() => setIs3DMode(!is3DMode)}
+            className={`px-6 py-2.5 rounded-full text-sm font-bold shadow-2xl border transition-all flex items-center gap-2
+              ${is3DMode 
+                ? 'bg-blue-600 text-white border-blue-500 hover:bg-blue-500 hover:-translate-y-1' 
+                : 'bg-slate-900/90 backdrop-blur-md text-white border-slate-700 hover:bg-slate-800 hover:-translate-y-1'
+              }`}
+          >
+            {is3DMode ? (
+              <><span className="text-blue-200">⬚</span> Exit 3D Mode</>
+            ) : (
+              <><span className="text-blue-400">◪</span> 3D Command Center</>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* LEFT SIDEBAR (Universal Collapse / Floating Panel) */}
